@@ -6,22 +6,30 @@ import { Briefcase, Calendar, ExternalLink, Edit, Trash2, CheckCircle, Clock, XC
 import { useNavigate } from "react-router-dom";
 
 interface ApplicationCardProps {
-  cv: {
+  application: {
     id: string;
     title: string;
-    job_title?: string;
-    company?: string;
+    company: string;
+    position: string;
     status: string;
     created_at: string;
-    ats_score?: number;
-    ai_score?: number;
-    job_link?: string;
+    updated_at: string;
+    user_id: string;
+    job_description?: string;
+    cv_content?: string;
+    cv_data?: any;
+    is_public?: boolean;
+    allow_comments?: boolean;
+    interview_date?: string;
+    interview_type?: string;
+    interview_status?: string;
+    interview_notes?: string;
   };
   onDelete: (id: string) => void;
   onStatusUpdate: (id: string, status: string) => void;
 }
 
-export const ApplicationCard = ({ cv, onDelete, onStatusUpdate }: ApplicationCardProps) => {
+export const ApplicationCard = ({ application, onDelete, onStatusUpdate }: ApplicationCardProps) => {
   const navigate = useNavigate();
 
   const getStatusColor = (status: string) => {
@@ -81,9 +89,9 @@ export const ApplicationCard = ({ cv, onDelete, onStatusUpdate }: ApplicationCar
   };
 
   const handleStatusAdvance = () => {
-    if (canAdvanceStatus(cv.status)) {
-      const nextStatus = getNextStatus(cv.status);
-      onStatusUpdate(cv.id, nextStatus);
+    if (canAdvanceStatus(application.status)) {
+      const nextStatus = getNextStatus(application.status);
+      onStatusUpdate(application.id, nextStatus);
     }
   };
 
@@ -92,29 +100,38 @@ export const ApplicationCard = ({ cv, onDelete, onStatusUpdate }: ApplicationCar
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
-            <h4 className="font-semibold text-gray-900 mb-1">{cv.title}</h4>
-            {cv.job_title && cv.company && (
+            <h4 className="font-semibold text-gray-900 mb-1">{application.title}</h4>
+            {application.position && application.company && (
               <div className="flex items-center text-sm text-gray-600 mb-2">
                 <Briefcase className="h-4 w-4 mr-1" />
-                {cv.job_title} at {cv.company}
+                {application.position} at {application.company}
               </div>
             )}
+            <div className="flex items-center space-x-2">
+              <Badge className={getStatusColor(application.status)}>
+                {getStatusIcon(application.status)}
+                <span className="ml-1 capitalize">{application.status}</span>
+              </Badge>
+              <span className="text-xs text-gray-500">
+                <Calendar className="h-3 w-3 inline mr-1" />
+                {new Date(application.created_at).toLocaleDateString()}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center space-x-1">
+          
+          <div className="flex items-center space-x-2">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate(`/editor?cv=${cv.id}`)}
-              className="h-8 w-8 p-0"
+              onClick={() => navigate(`/editor?id=${application.id}`)}
             >
               <Edit className="h-4 w-4" />
             </Button>
-            {cv.job_link && (
+            {application.job_description && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => window.open(cv.job_link, '_blank')}
-                className="h-8 w-8 p-0"
+                onClick={() => window.open(application.job_description, '_blank')}
               >
                 <ExternalLink className="h-4 w-4" />
               </Button>
@@ -122,92 +139,52 @@ export const ApplicationCard = ({ cv, onDelete, onStatusUpdate }: ApplicationCar
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onDelete(cv.id)}
-              className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+              onClick={() => onDelete(application.id)}
+              className="text-red-600 hover:text-red-700"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-2">
-            <Badge className={getStatusColor(cv.status)}>
-              {getStatusIcon(cv.status)} {cv.status.charAt(0).toUpperCase() + cv.status.slice(1)}
-            </Badge>
-            {cv.ats_score && (
-              <Badge variant="outline">ATS: {cv.ats_score}%</Badge>
-            )}
-            {cv.ai_score && (
-              <Badge variant="outline">AI: {cv.ai_score}%</Badge>
-            )}
-          </div>
-          <div className="flex items-center text-xs text-gray-500">
-            <Calendar className="h-3 w-3 mr-1" />
-            {new Date(cv.created_at).toLocaleDateString()}
-          </div>
-        </div>
-
-        {/* Status Management Buttons */}
-        <div className="flex flex-wrap gap-2">
-          {/* Main Status Button */}
+        <div className="flex items-center justify-between">
           <Button
             onClick={handleStatusAdvance}
-            disabled={!canAdvanceStatus(cv.status)}
-            className={`${getStatusButtonVariant(cv.status)} flex-1 min-w-[140px]`}
+            disabled={!canAdvanceStatus(application.status)}
+            className={`${getStatusButtonVariant(application.status)} w-full mr-2`}
           >
-            {getStatusIcon(cv.status)}
-            <span className="ml-2">{getNextStatusLabel(cv.status)}</span>
+            {getNextStatusLabel(application.status)}
           </Button>
-
-          {/* Quick Status Buttons */}
-          {cv.status !== 'applied' && (
+          
+          <div className="flex space-x-1">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onStatusUpdate(cv.id, 'applied')}
-              className="border-yellow-500 text-yellow-700 hover:bg-yellow-50"
+              onClick={() => onStatusUpdate(application.id, 'applied')}
+              className={application.status === 'applied' ? 'bg-yellow-100 border-yellow-300' : ''}
             >
               <Send className="h-3 w-3 mr-1" />
               Applied
             </Button>
-          )}
-          
-          {cv.status !== 'interview' && (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onStatusUpdate(cv.id, 'interview')}
-              className="border-blue-500 text-blue-700 hover:bg-blue-50"
+              onClick={() => onStatusUpdate(application.id, 'interview')}
+              className={application.status === 'interview' ? 'bg-blue-100 border-blue-300' : ''}
             >
               <Clock className="h-3 w-3 mr-1" />
               Interview
             </Button>
-          )}
-          
-          {cv.status !== 'accepted' && (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onStatusUpdate(cv.id, 'accepted')}
-              className="border-green-500 text-green-700 hover:bg-green-50"
+              onClick={() => onStatusUpdate(application.id, 'accepted')}
+              className={application.status === 'accepted' ? 'bg-green-100 border-green-300' : ''}
             >
               <CheckCircle className="h-3 w-3 mr-1" />
               Accepted
             </Button>
-          )}
-          
-          {cv.status !== 'rejected' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onStatusUpdate(cv.id, 'rejected')}
-              className="border-red-500 text-red-700 hover:bg-red-50"
-            >
-              <XCircle className="h-3 w-3 mr-1" />
-              Rejected
-            </Button>
-          )}
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -9,53 +9,48 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 
 interface CreateApplicationDialogProps {
-  onCreateApplication: (data: {
+  onClose: () => void;
+  onSubmit: (data: {
     title: string;
-    jobTitle: string;
+    position: string;
     company: string;
     jobDescription: string;
-    jobLink: string;
+    cvContent?: string;
+    cvData?: any;
   }) => void;
 }
 
-export const CreateApplicationDialog = ({ onCreateApplication }: CreateApplicationDialogProps) => {
-  const [open, setOpen] = useState(false);
+export const CreateApplicationDialog = ({ onClose, onSubmit }: CreateApplicationDialogProps) => {
   const [formData, setFormData] = useState({
     title: '',
-    jobTitle: '',
+    position: '',
     company: '',
     jobDescription: '',
-    jobLink: ''
+    cvContent: '',
+    cvData: {}
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.title && formData.jobTitle && formData.company) {
-      onCreateApplication(formData);
+    if (formData.title && formData.position && formData.company) {
+      onSubmit(formData);
       setFormData({
         title: '',
-        jobTitle: '',
+        position: '',
         company: '',
         jobDescription: '',
-        jobLink: ''
+        cvContent: '',
+        cvData: {}
       });
-      setOpen(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          New Application
-        </Button>
-      </DialogTrigger>
+    <Dialog open={true} onOpenChange={() => onClose()}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Create New Job Application</DialogTitle>
@@ -73,11 +68,11 @@ export const CreateApplicationDialog = ({ onCreateApplication }: CreateApplicati
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="jobTitle">Job Title</Label>
+              <Label htmlFor="position">Job Title</Label>
               <Input
-                id="jobTitle"
-                value={formData.jobTitle}
-                onChange={(e) => setFormData({...formData, jobTitle: e.target.value})}
+                id="position"
+                value={formData.position}
+                onChange={(e) => setFormData({...formData, position: e.target.value})}
                 placeholder="Senior Developer"
                 required
               />
@@ -94,30 +89,33 @@ export const CreateApplicationDialog = ({ onCreateApplication }: CreateApplicati
             </div>
           </div>
           <div>
-            <Label htmlFor="jobLink">Job Link (Optional)</Label>
-            <Input
-              id="jobLink"
-              type="url"
-              value={formData.jobLink}
-              onChange={(e) => setFormData({...formData, jobLink: e.target.value})}
-              placeholder="https://..."
-            />
-          </div>
-          <div>
             <Label htmlFor="jobDescription">Job Description (Optional)</Label>
             <Textarea
               id="jobDescription"
               value={formData.jobDescription}
               onChange={(e) => setFormData({...formData, jobDescription: e.target.value})}
-              placeholder="Paste the job description here for AI analysis..."
+              placeholder="Paste the job description here..."
               rows={4}
             />
           </div>
-          <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+          <div>
+            <Label htmlFor="cvContent">CV Content (Optional)</Label>
+            <Textarea
+              id="cvContent"
+              value={formData.cvContent}
+              onChange={(e) => setFormData({...formData, cvContent: e.target.value})}
+              placeholder="Paste your CV content here..."
+              rows={4}
+            />
+          </div>
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit">Create Application</Button>
+            <Button type="submit">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Application
+            </Button>
           </div>
         </form>
       </DialogContent>
