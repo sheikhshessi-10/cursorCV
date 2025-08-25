@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Plus, FileText, Briefcase, LogOut, User, Github, Linkedin, TrendingUp, Clock, CheckCircle } from 'lucide-react';
+import { Sparkles, Plus, FileText, Briefcase, LogOut, User, Github, Linkedin, TrendingUp, Clock, CheckCircle, Users, Search, Filter, Settings } from 'lucide-react';
 import { ApplicationCard } from '@/components/ApplicationCard';
 import { CreateApplicationDialog } from '@/components/CreateApplicationDialog';
 import { supabase } from '@/lib/supabase';
@@ -26,7 +26,7 @@ interface CVRecord {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [cvs, setCvs] = useState<CVRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -233,31 +233,68 @@ const Dashboard = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      const { error } = await signOut();
+      if (error) throw error;
+      toast.success('Logged out successfully');
+    } catch (error: any) {
+      toast.error('Error logging out');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Sparkles className="h-6 w-6 text-blue-600" />
-              <h1 className="text-xl font-bold text-gray-900">AI Resume Builder</h1>
-            </div>
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <User className="h-4 w-4 text-gray-500" />
-                <span className="text-sm text-gray-700">{user?.user_metadata?.name || user?.email || 'User'}</span>
+              <h1 className="text-2xl font-bold text-gray-900">CV Builder</h1>
+              <div className="hidden md:flex items-center space-x-2 text-sm text-gray-600">
+                <span>Welcome back,</span>
+                <span className="font-medium text-gray-900">
+                  {user?.user_metadata?.name || user?.email || 'User'}
+                </span>
               </div>
-              <Button variant="outline" size="sm" onClick={() => navigate('/')}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                onClick={() => window.location.href = '/social'}
+                className="hidden md:flex"
+              >
+                <Users className="h-4 w-4 mr-2" />
+                Social
               </Button>
+              
+              <div className="flex items-center space-x-2">
+                <Button variant="ghost" size="sm">
+                  <User className="h-4 w-4 mr-2" />
+                  Profile
+                </Button>
+                <Button variant="ghost" size="sm">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleLogout}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
@@ -379,7 +416,7 @@ const Dashboard = () => {
             ))}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 };

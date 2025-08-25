@@ -1,73 +1,153 @@
-# Welcome to your Lovable project
+# 🚀 Smart CV Builder - Multi-User Social Platform
 
-## Project info
+A modern, AI-powered CV builder with social networking features for job seekers to connect, share progress, and support each other.
 
-**URL**: https://lovable.dev/projects/48458345-2eb9-4783-9838-3553e4873029
+## ✨ Features
 
-## How can I edit this code?
+### 🔐 **Authentication System**
+- **User Registration**: Sign up with email/password or Google OAuth
+- **Secure Login**: Email verification and password protection
+- **User Profiles**: Public profiles with customizable information
 
-There are several ways of editing your application.
+### 📝 **CV Building & Management**
+- **AI-Powered CV Creation**: Get intelligent suggestions for resume optimization
+- **Application Tracking**: Monitor internship/job applications with status updates
+- **Status Management**: Visual status indicators (Pending, Approved, Rejected)
+- **Backend Integration**: Connect with Flask backend for AI processing
 
-**Use Lovable**
+### 👥 **Social Networking**
+- **Friend System**: Search and connect with other users by name
+- **Public Applications**: Share your application progress with the community
+- **Activity Feed**: See what your friends are up to
+- **Support System**: Like, comment, and encourage fellow job seekers
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/48458345-2eb9-4783-9838-3553e4873029) and start prompting.
+### 🎯 **User Experience**
+- **Responsive Design**: Works on desktop and mobile
+- **Real-time Updates**: Live notifications and status changes
+- **Search & Filter**: Find applications and users easily
+- **Modern UI**: Built with Tailwind CSS and Shadcn/ui components
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🛠️ Tech Stack
 
-**Use your preferred IDE**
+- **Frontend**: React 18 + TypeScript + Vite
+- **UI Components**: Tailwind CSS + Shadcn/ui
+- **Backend**: Flask (Python) + CrewAI for AI processing
+- **Database**: Supabase (PostgreSQL) with Row Level Security
+- **Authentication**: Supabase Auth with OAuth support
+- **State Management**: React Context + Hooks
+- **Deployment**: Vite dev server + ngrok for backend exposure
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🚀 Getting Started
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Prerequisites
+- Node.js 18+ and npm
+- Python 3.8+ with Flask
+- Supabase account
+- ngrok account (for backend exposure)
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### 1. **Frontend Setup**
+```bash
+cd smart-cv-cursor-build-main
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### 2. **Backend Setup**
+```bash
+# Install Python dependencies
+pip install flask flask-cors pyngrok crewai
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+# Start Flask server
+python app.py
+```
 
-**Use GitHub Codespaces**
+### 3. **Database Setup**
+1. Create a Supabase project
+2. Run the SQL migrations in `supabase/migrations/`
+3. Update `src/lib/supabase.ts` with your credentials
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### 4. **Environment Configuration**
+- Set up ngrok tunnel for backend exposure
+- Update frontend with current ngrok URL
+- Configure Supabase RLS policies
 
-## What technologies are used for this project?
+## 📱 How to Use
 
-This project is built with:
+### **For New Users**
+1. **Sign Up**: Create account with email/password or Google
+2. **Complete Profile**: Add your name, university, major, etc.
+3. **Build CV**: Use the AI-powered editor to create your resume
+4. **Track Applications**: Add internship/job applications
+5. **Connect**: Find and add friends from the community
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### **For Existing Users**
+1. **Login**: Access your dashboard
+2. **Manage Applications**: Update status, add interviews
+3. **Social Dashboard**: View friends' progress, send support
+4. **Network**: Search for new connections
 
-## How can I deploy this project?
+### **Social Features**
+- **Friends Tab**: Search users, send/accept friend requests
+- **Public Feed**: View shared applications from the community
+- **Activity Feed**: See recent updates from your network
+- **Stats**: Track community metrics and your progress
 
-Simply open [Lovable](https://lovable.dev/projects/48458345-2eb9-4783-9838-3553e4873029) and click on Share -> Publish.
+## 🔧 Configuration
 
-## Can I connect a custom domain to my Lovable project?
+### **Backend Endpoints**
+- `/suggest-cv`: Get AI suggestions for CV improvement
+- `/process-cv`: Process CV with job description matching
 
-Yes, you can!
+### **Database Tables**
+- `user_profiles`: User information and settings
+- `cvs`: CV and application data
+- `friend_connections`: Friend relationships
+- `application_comments`: Comments and support
+- `notifications`: User notifications
+- `activity_feed`: Community activity tracking
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### **Security Features**
+- Row Level Security (RLS) policies
+- User authentication and authorization
+- Public/private profile controls
+- Secure friend request system
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## 🌟 Key Benefits
+
+1. **Community Support**: Connect with fellow job seekers
+2. **AI Assistance**: Get intelligent CV optimization suggestions
+3. **Progress Tracking**: Visual application status management
+4. **Networking**: Build professional relationships
+5. **Motivation**: Support and encourage each other
+
+## 🚧 Development Notes
+
+- **Demo Mode**: Fallback authentication for development
+- **Error Handling**: Comprehensive error messages and user feedback
+- **Responsive Design**: Mobile-first approach with Tailwind CSS
+- **Type Safety**: Full TypeScript implementation
+- **Performance**: Optimized queries and lazy loading
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🆘 Support
+
+For issues and questions:
+1. Check the documentation
+2. Review existing issues
+3. Create a new issue with details
+4. Contact the development team
+
+---
+
+**Built with ❤️ for the job-seeking community**

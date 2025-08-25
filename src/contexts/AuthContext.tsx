@@ -1,21 +1,24 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
+import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { User } from '@supabase/supabase-js';
-import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
-  signOut: () => Promise<void>;
+  signUp: (email: string, password: string, userData: any) => Promise<any>;
+  signIn: (email: string, password: string) => Promise<any>;
+  signInWithGoogle: () => Promise<any>;
+  signOut: () => Promise<any>;
+  resetPassword: (email: string) => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
@@ -23,41 +26,114 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error('Error getting session:', error);
+    // Check for demo mode first
+    const demoUser = localStorage.getItem('demoUser');
+    if (demoUser) {
+      try {
+        const demoUserData = JSON.parse(demoUser);
+        console.log('🚀 Demo mode activated:', demoUserData);
+        setUser(demoUserData as any);
+        setLoading(false);
+        return;
+      } catch (err) {
+        console.error('Failed to parse demo user:', err);
+        localStorage.removeItem('demoUser');
       }
+    }
+
+    // Test Supabase connection first
+    const testConnection = async () => {
+      try {
+        console.log('🔍 Testing Supabase connection...');
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('❌ Supabase connection error:', error);
+        } else {
+          console.log('✅ Supabase connection successful');
+        }
+      } catch (err) {
+        console.error('❌ Failed to connect to Supabase:', err);
+      }
+    };
+
+    testConnection();
+
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('📱 Initial session:', session);
+      setSession(session);
       setUser(session?.user ?? null);
+      setLoading(false);
+    }).catch(err => {
+      console.error('❌ Error getting initial session:', err);
       setLoading(false);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth event:', event);
-        setUser(session?.user ?? null);
-        setLoading(false);
-        
-        if (event === 'SIGNED_IN') {
-          toast.success('Successfully signed in!');
-        } else if (event === 'SIGNED_OUT') {
-          toast.success('Successfully signed out!');
-        }
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('🔄 Auth state change:', _event, session);
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const signInWithGoogle = async () => {
+  const signUp = async (email: string, password: string, userData: any) => {
+    console.log('🚀 Attempting signup for:', email);
     try {
-      setLoading(true);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: userData
+        }
+      });
       
-      // Check if we're in development and Google provider is not configured
+      if (error) {
+        console.error('❌ Signup error:', error);
+      } else {
+        console.log('✅ Signup successful:', data);
+      }
+      
+      return { data, error };
+    } catch (err) {
+      console.error('❌ Signup exception:', err);
+      return { data: null, error: err };
+    }
+  };
+
+  const signIn = async (email: string, password: string) => {
+    console.log('🔑 Attempting signin for:', email);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        console.error('❌ Signin error:', error);
+      } else {
+        console.log('✅ Signin successful:', data);
+      }
+      
+      return { data, error };
+    } catch (err) {
+      console.error('❌ Signin exception:', err);
+      return { data: null, error: err };
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    console.log('🌐 Attempting Google OAuth signin');
+    try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -66,54 +142,77 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       
       if (error) {
-        if (error.message.includes('provider is not enabled') || error.message.includes('Unsupported provider')) {
-          // Fallback to email/password demo for development
-          toast.info('Google OAuth not configured. Using demo login...');
-          
-          // Create a demo user session
-          const demoUser = {
-            id: 'demo-user-123',
-            email: 'demo@example.com',
-            user_metadata: {
-              name: 'Demo User',
-              avatar_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'
-            }
-          };
-          
-          // Simulate successful login
-          setUser(demoUser as any);
-          toast.success('Demo login successful!');
-          window.location.href = '/dashboard';
-          return;
-        }
-        throw error;
+        console.error('❌ Google OAuth error:', error);
+      } else {
+        console.log('✅ Google OAuth initiated:', data);
       }
-    } catch (error: any) {
-      console.error('Error signing in:', error);
-      toast.error(error.message || 'Error signing in');
-    } finally {
-      setLoading(false);
+      
+      return { data, error };
+    } catch (err) {
+      console.error('❌ Google OAuth exception:', err);
+      return { data: null, error: err };
     }
   };
 
   const signOut = async () => {
-    try {
-      setLoading(true);
-      const { error } = await supabase.auth.signOut();
-      if (error && !error.message.includes('session_not_found')) {
-        throw error;
-      }
+    console.log('🚪 Attempting signout');
+    
+    // Handle demo mode signout
+    if (user?.id === 'demo-user-123') {
+      localStorage.removeItem('demoUser');
       setUser(null);
-    } catch (error: any) {
-      console.error('Error signing out:', error);
-      toast.error(error.message || 'Error signing out');
-    } finally {
-      setLoading(false);
+      setSession(null);
+      console.log('✅ Demo mode signout successful');
+      return { error: null };
+    }
+    
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('❌ Signout error:', error);
+      } else {
+        console.log('✅ Signout successful');
+      }
+      return { error };
+    } catch (err) {
+      console.error('❌ Signout exception:', err);
+      return { error: err };
     }
   };
 
+  const resetPassword = async (email: string) => {
+    console.log('🔐 Attempting password reset for:', email);
+    try {
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+      
+      if (error) {
+        console.error('❌ Password reset error:', error);
+      } else {
+        console.log('✅ Password reset email sent:', data);
+      }
+      
+      return { data, error };
+    } catch (err) {
+      console.error('❌ Password reset exception:', err);
+      return { data: null, error: err };
+    }
+  };
+
+  const value = {
+    user,
+    session,
+    loading,
+    signUp,
+    signIn,
+    signInWithGoogle,
+    signOut,
+    resetPassword
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
