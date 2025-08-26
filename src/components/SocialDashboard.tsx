@@ -1,33 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Search, 
   Users, 
-  MessageCircle, 
-  Heart, 
+  UserPlus, 
   TrendingUp,
-  Calendar,
-  MapPin,
-  GraduationCap,
-  Building,
-  Clock,
-  UserPlus,
-  UserCheck,
-  UserX
+  ArrowLeft
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
 
 export const SocialDashboard = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('feed');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(false);
 
   if (!user) {
     return (
@@ -57,6 +40,7 @@ export const SocialDashboard = () => {
               variant="outline" 
               onClick={() => window.location.href = '/dashboard'}
             >
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
             </Button>
           </div>
@@ -75,28 +59,8 @@ export const SocialDashboard = () => {
           </p>
         </div>
 
-        {/* Search Bar */}
-        <Card className="mb-8">
-          <CardContent className="p-6">
-            <div className="flex space-x-4">
-              <div className="flex-1">
-                <Input
-                  placeholder="Search for users, companies, or positions..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full"
-                />
-              </div>
-              <Button onClick={() => toast.info('Search feature coming soon!')}>
-                <Search className="h-4 w-4 mr-2" />
-                Search
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs defaultValue="feed" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="feed">Public Feed</TabsTrigger>
             <TabsTrigger value="friends">Friends</TabsTrigger>
@@ -120,7 +84,7 @@ export const SocialDashboard = () => {
                   <p className="text-gray-600 mb-4">
                     Public applications feed will be available once the database is set up
                   </p>
-                  <Button variant="outline" onClick={() => toast.info('Database setup required')}>
+                  <Button variant="outline">
                     Setup Database
                   </Button>
                 </div>
@@ -139,23 +103,11 @@ export const SocialDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {/* Search Users */}
-                  <div className="flex space-x-2">
-                    <Input
-                      placeholder="Search for users to connect with..."
-                      className="flex-1"
-                    />
-                    <Button variant="outline" onClick={() => toast.info('Friend search coming soon!')}>
-                      <Search className="h-4 w-4 mr-2" />
-                      Search
-                    </Button>
-                  </div>
-                  
                   {/* Current Friends */}
                   <div className="border-t pt-4">
                     <h4 className="font-medium text-gray-900 mb-3">Your Friends</h4>
                     <div className="text-center py-8">
-                      <UserCheck className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                      <UserPlus className="h-12 w-12 text-gray-300 mx-auto mb-2" />
                       <p className="text-gray-600">No friends yet. Start connecting!</p>
                     </div>
                   </div>
@@ -180,7 +132,7 @@ export const SocialDashboard = () => {
                   <p className="text-gray-600 mb-4">
                     Track your friends' internship progress and achievements
                   </p>
-                  <Button variant="outline" onClick={() => toast.info('Activity tracking coming soon!')}>
+                  <Button variant="outline">
                     Enable Tracking
                   </Button>
                 </div>
@@ -228,16 +180,16 @@ export const SocialDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button variant="outline" className="h-20 flex-col" onClick={() => toast.info('Profile setup coming soon!')}>
+                <Button variant="outline" className="h-20 flex-col">
                   <UserPlus className="h-6 w-6 mb-2" />
                   <span>Setup Profile</span>
                 </Button>
-                <Button variant="outline" className="h-20 flex-col" onClick={() => toast.info('Friend suggestions coming soon!')}>
+                <Button variant="outline" className="h-20 flex-col">
                   <Users className="h-6 w-6 mb-2" />
                   <span>Find Friends</span>
                 </Button>
-                <Button variant="outline" className="h-20 flex-col" onClick={() => toast.info('Sharing coming soon!')}>
-                  <MessageCircle className="h-6 w-6 mb-2" />
+                <Button variant="outline" className="h-20 flex-col">
+                  <TrendingUp className="h-6 w-6 mb-2" />
                   <span>Share Progress</span>
                 </Button>
               </div>

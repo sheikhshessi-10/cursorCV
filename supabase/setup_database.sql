@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS cvs (
     title VARCHAR(200) NOT NULL,
     company VARCHAR(200),
     position VARCHAR(200),
-    status VARCHAR(50) DEFAULT 'pending',
+    status VARCHAR(50) DEFAULT 'draft',
     job_description TEXT,
     cv_content TEXT,
     cv_data JSONB,
@@ -102,36 +102,53 @@ CREATE TABLE IF NOT EXISTS activity_feed (
 CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_username ON user_profiles(username);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_is_public ON user_profiles(is_public);
+
 CREATE INDEX IF NOT EXISTS idx_cvs_user_id ON cvs(user_id);
 CREATE INDEX IF NOT EXISTS idx_cvs_status ON cvs(status);
 CREATE INDEX IF NOT EXISTS idx_cvs_is_public ON cvs(is_public);
+CREATE INDEX IF NOT EXISTS idx_cvs_company ON cvs(company);
+CREATE INDEX IF NOT EXISTS idx_cvs_position ON cvs(position);
+
 CREATE INDEX IF NOT EXISTS idx_friend_connections_user_id ON friend_connections(user_id);
 CREATE INDEX IF NOT EXISTS idx_friend_connections_friend_id ON friend_connections(friend_id);
 CREATE INDEX IF NOT EXISTS idx_friend_connections_status ON friend_connections(status);
+
 CREATE INDEX IF NOT EXISTS idx_application_comments_cv_id ON application_comments(cv_id);
+CREATE INDEX IF NOT EXISTS idx_application_comments_user_id ON application_comments(user_id);
+
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
+
 CREATE INDEX IF NOT EXISTS idx_activity_feed_user_id ON activity_feed(user_id);
 CREATE INDEX IF NOT EXISTS idx_activity_feed_created_at ON activity_feed(created_at);
 
--- Create triggers for updated_at
-CREATE TRIGGER update_user_profiles_updated_at BEFORE UPDATE ON user_profiles
+-- Drop existing triggers if they exist, then create new ones
+DROP TRIGGER IF EXISTS update_user_profiles_updated_at ON user_profiles;
+CREATE TRIGGER update_user_profiles_updated_at 
+    BEFORE UPDATE ON user_profiles 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_cvs_updated_at BEFORE UPDATE ON cvs
+DROP TRIGGER IF EXISTS update_cvs_updated_at ON cvs;
+CREATE TRIGGER update_cvs_updated_at 
+    BEFORE UPDATE ON cvs 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_friend_connections_updated_at BEFORE UPDATE ON friend_connections
+DROP TRIGGER IF EXISTS update_friend_connections_updated_at ON friend_connections;
+CREATE TRIGGER update_friend_connections_updated_at 
+    BEFORE UPDATE ON friend_connections 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_application_comments_updated_at BEFORE UPDATE ON application_comments
+DROP TRIGGER IF EXISTS update_application_comments_updated_at ON application_comments;
+CREATE TRIGGER update_application_comments_updated_at 
+    BEFORE UPDATE ON application_comments 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_notifications_updated_at BEFORE UPDATE ON notifications
+DROP TRIGGER IF EXISTS update_notifications_updated_at ON notifications;
+CREATE TRIGGER update_notifications_updated_at 
+    BEFORE UPDATE ON notifications 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Row Level Security (RLS) Policies
-
--- Enable RLS on all tables
+-- Enable Row Level Security (RLS)
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cvs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE friend_connections ENABLE ROW LEVEL SECURITY;
@@ -139,49 +156,67 @@ ALTER TABLE application_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activity_feed ENABLE ROW LEVEL SECURITY;
 
--- User Profiles Policies
+-- Drop existing policies if they exist, then create new ones
+DROP POLICY IF EXISTS "Users can view their own profile" ON user_profiles;
 CREATE POLICY "Users can view their own profile" ON user_profiles
     FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can view public profiles" ON user_profiles;
 CREATE POLICY "Users can view public profiles" ON user_profiles
     FOR SELECT USING (is_public = true);
 
-CREATE POLICY "Users can update their own profile" ON user_profiles
-    FOR UPDATE USING (auth.uid() = user_id);
-
+DROP POLICY IF EXISTS "Users can insert their own profile" ON user_profiles;
 CREATE POLICY "Users can insert their own profile" ON user_profiles
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
--- CVs Policies
+DROP POLICY IF EXISTS "Users can update their own profile" ON user_profiles;
+CREATE POLICY "Users can update their own profile" ON user_profiles
+    FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own profile" ON user_profiles;
+CREATE POLICY "Users can delete their own profile" ON user_profiles
+    FOR DELETE USING (auth.uid() = user_id);
+
+-- RLS Policies for cvs
+DROP POLICY IF EXISTS "Users can view their own CVs" ON cvs;
 CREATE POLICY "Users can view their own CVs" ON cvs
     FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can view public CVs" ON cvs;
 CREATE POLICY "Users can view public CVs" ON cvs
     FOR SELECT USING (is_public = true);
 
-CREATE POLICY "Users can update their own CVs" ON cvs
-    FOR UPDATE USING (auth.uid() = user_id);
-
+DROP POLICY IF EXISTS "Users can insert their own CVs" ON cvs;
 CREATE POLICY "Users can insert their own CVs" ON cvs
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own CVs" ON cvs;
+CREATE POLICY "Users can update their own CVs" ON cvs
+    FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own CVs" ON cvs;
 CREATE POLICY "Users can delete their own CVs" ON cvs
     FOR DELETE USING (auth.uid() = user_id);
 
--- Friend Connections Policies
-CREATE POLICY "Users can view their friend connections" ON friend_connections
+-- RLS Policies for friend_connections
+DROP POLICY IF EXISTS "Users can view their own connections" ON friend_connections;
+CREATE POLICY "Users can view their own connections" ON friend_connections
     FOR SELECT USING (auth.uid() = user_id OR auth.uid() = friend_id);
 
-CREATE POLICY "Users can insert friend connections" ON friend_connections
+DROP POLICY IF EXISTS "Users can insert friend requests" ON friend_connections;
+CREATE POLICY "Users can insert friend requests" ON friend_connections
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can update their friend connections" ON friend_connections
+DROP POLICY IF EXISTS "Users can update their own connections" ON friend_connections;
+CREATE POLICY "Users can update their own connections" ON friend_connections
     FOR UPDATE USING (auth.uid() = user_id OR auth.uid() = friend_id);
 
-CREATE POLICY "Users can delete their friend connections" ON friend_connections
+DROP POLICY IF EXISTS "Users can delete their own connections" ON friend_connections;
+CREATE POLICY "Users can delete their own connections" ON friend_connections
     FOR DELETE USING (auth.uid() = user_id OR auth.uid() = friend_id);
 
--- Application Comments Policies
+-- RLS Policies for application_comments
+DROP POLICY IF EXISTS "Users can view comments on public CVs" ON application_comments;
 CREATE POLICY "Users can view comments on public CVs" ON application_comments
     FOR SELECT USING (
         EXISTS (
@@ -191,6 +226,7 @@ CREATE POLICY "Users can view comments on public CVs" ON application_comments
         )
     );
 
+DROP POLICY IF EXISTS "Users can insert comments on public CVs" ON application_comments;
 CREATE POLICY "Users can insert comments on public CVs" ON application_comments
     FOR INSERT WITH CHECK (
         EXISTS (
@@ -200,24 +236,34 @@ CREATE POLICY "Users can insert comments on public CVs" ON application_comments
         )
     );
 
+DROP POLICY IF EXISTS "Users can update their own comments" ON application_comments;
 CREATE POLICY "Users can update their own comments" ON application_comments
     FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete their own comments" ON application_comments;
 CREATE POLICY "Users can delete their own comments" ON application_comments
     FOR DELETE USING (auth.uid() = user_id);
 
--- Notifications Policies
+-- RLS Policies for notifications
+DROP POLICY IF EXISTS "Users can view their own notifications" ON notifications;
 CREATE POLICY "Users can view their own notifications" ON notifications
     FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can update their own notifications" ON notifications
-    FOR UPDATE USING (auth.uid() = user_id);
-
+DROP POLICY IF EXISTS "Users can insert their own notifications" ON notifications;
 CREATE POLICY "Users can insert their own notifications" ON notifications
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
--- Activity Feed Policies
-CREATE POLICY "Users can view public activity feed" ON activity_feed
+DROP POLICY IF EXISTS "Users can update their own notifications" ON notifications;
+CREATE POLICY "Users can update their own notifications" ON notifications
+    FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own notifications" ON notifications;
+CREATE POLICY "Users can delete their own notifications" ON notifications
+    FOR DELETE USING (auth.uid() = user_id);
+
+-- RLS Policies for activity_feed
+DROP POLICY IF EXISTS "Users can view public activity" ON activity_feed;
+CREATE POLICY "Users can view public activity" ON activity_feed
     FOR SELECT USING (
         EXISTS (
             SELECT 1 FROM user_profiles 
@@ -226,8 +272,30 @@ CREATE POLICY "Users can view public activity feed" ON activity_feed
         )
     );
 
+DROP POLICY IF EXISTS "Users can insert their own activity" ON activity_feed;
 CREATE POLICY "Users can insert their own activity" ON activity_feed
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+-- Create a function to automatically create user profile on signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+    INSERT INTO public.user_profiles (user_id, username, display_name, is_public)
+    VALUES (
+        NEW.id,
+        COALESCE(NEW.raw_user_meta_data->>'username', split_part(NEW.email, '@', 1)),
+        COALESCE(NEW.raw_user_meta_data->>'name', NEW.email),
+        true
+    );
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create trigger to automatically create user profile
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
 -- Success message
-SELECT '🎉 Database setup completed successfully! Your multi-user social platform is ready!' as message;
+SELECT '🎉 Database setup completed successfully! Your multi-user social platform is ready!' as message; 
