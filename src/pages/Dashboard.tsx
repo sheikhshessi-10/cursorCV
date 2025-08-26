@@ -4,6 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   Plus, 
   FileText, 
@@ -22,6 +24,7 @@ import { ApplicationCard } from '@/components/ApplicationCard';
 import { CreateApplicationDialog } from '@/components/CreateApplicationDialog';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface CVRecord {
   id: string;
@@ -49,6 +52,9 @@ const Dashboard = () => {
   const [cvs, setCvs] = useState<CVRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showPremiumDialog, setShowPremiumDialog] = useState(false);
+  const [accessCode, setAccessCode] = useState('');
+  const [showCodeInput, setShowCodeInput] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -226,6 +232,19 @@ const Dashboard = () => {
     return cvs.filter(cv => cv.status === status).length;
   };
 
+  const handleAccessCodeSubmit = () => {
+    if (accessCode.toLowerCase() === 'shessi fam') {
+      toast.success('Access granted! Welcome to AI Resume!');
+      setShowPremiumDialog(false);
+      setShowCodeInput(false);
+      setAccessCode('');
+      navigate('/editor');
+    } else {
+      toast.error('Invalid access code. Please try again.');
+      setAccessCode('');
+    }
+  };
+
   if (!user) {
     return <div>Loading...</div>;
   }
@@ -378,9 +397,9 @@ const Dashboard = () => {
               <Plus className="h-4 w-4 mr-2" />
               New Application
             </Button>
-            <Button variant="outline" onClick={() => navigate('/editor')}>
+            <Button variant="outline" onClick={() => setShowPremiumDialog(true)}>
               <FileText className="h-4 w-4 mr-2" />
-              Base CV Editor
+              AI Resume
             </Button>
           </div>
         </div>
@@ -423,6 +442,67 @@ const Dashboard = () => {
           onSubmit={handleCreateApplication}
         />
       )}
+
+      {/* Premium Feature Dialog */}
+      <AlertDialog open={showPremiumDialog} onOpenChange={setShowPremiumDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Premium Feature</AlertDialogTitle>
+            <AlertDialogDescription>
+              This is a premium feature where agents work on your CV to make it accustomed to a specific job based on in-depth research.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          {!showCodeInput ? (
+            <div className="py-4">
+              <Button 
+                onClick={() => setShowCodeInput(true)}
+                className="w-full"
+              >
+                Enter Access Code
+              </Button>
+            </div>
+          ) : (
+            <div className="py-4 space-y-4">
+              <div>
+                <Label htmlFor="accessCode">Access Code</Label>
+                <Input
+                  id="accessCode"
+                  type="text"
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value)}
+                  placeholder="Enter your access code"
+                  onKeyPress={(e) => e.key === 'Enter' && handleAccessCodeSubmit()}
+                />
+              </div>
+              <div className="flex space-x-2">
+                <Button 
+                  onClick={handleAccessCodeSubmit}
+                  className="flex-1"
+                >
+                  Submit
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => setShowCodeInput(false)}
+                >
+                  Back
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowPremiumDialog(false);
+              setShowCodeInput(false);
+              setAccessCode('');
+            }}>
+              Close
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
