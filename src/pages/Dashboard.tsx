@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { ApplicationCard } from '@/components/ApplicationCard';
 import { CreateApplicationDialog } from '@/components/CreateApplicationDialog';
+import { NotificationsPanel } from '@/components/NotificationsPanel';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -274,6 +275,8 @@ const Dashboard = () => {
                 <Users className="h-4 w-4 mr-2" />
                 Social
               </Button>
+              
+              <NotificationsPanel />
               
               <div className="flex items-center space-x-2">
                 <Button variant="ghost" size="sm">

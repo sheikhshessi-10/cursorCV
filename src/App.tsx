@@ -10,6 +10,7 @@ import Editor from "./pages/Editor";
 import Templates from "./pages/Templates";
 import { SocialDashboard } from "./components/SocialDashboard";
 import NotFound from "./pages/NotFound";
+import { UserProfilePage } from './components/UserProfilePage';
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/editor" element={<Editor />} />
             <Route path="/templates" element={<Templates />} />
             <Route path="/social" element={<SocialDashboard />} />
+            <Route path="/user/:userId" element={<UserProfilePage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

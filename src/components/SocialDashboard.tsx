@@ -1,202 +1,282 @@
+import React, { useState, useEffect } from 'react';
+import { Search, Users, UserPlus, ArrowLeft, UserCheck, Clock, UserX } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Users, 
-  UserPlus, 
-  TrendingUp,
-  ArrowLeft
-} from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useNavigate } from 'react-router-dom';
 
-export const SocialDashboard = () => {
+interface UserProfile {
+  id: string;
+  user_id: string;
+  username: string;
+  display_name: string;
+  bio: string;
+  location: string;
+  university: string;
+  major: string;
+  graduation_year: number;
+  created_at: string;
+}
+
+interface FriendConnection {
+  id: string;
+  user_id: string;
+  friend_id: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  updated_at: string;
+}
+
+export function SocialDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
+  const [friendConnections, setFriendConnections] = useState<FriendConnection[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Please log in to access Social features</h2>
-          <p className="text-gray-600">You need to be logged in to view and interact with other users.</p>
-        </div>
-      </div>
+  useEffect(() => {
+    fetchAllUsers();
+    if (user) {
+      fetchFriendConnections();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredUsers(allUsers);
+    } else {
+      const filtered = allUsers.filter(user => 
+        user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.display_name?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredUsers(filtered);
+    }
+  }, [searchQuery, allUsers]);
+
+  const fetchAllUsers = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching users:', error);
+        return;
+      }
+
+      setAllUsers(data || []);
+      setFilteredUsers(data || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchFriendConnections = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('friend_connections')
+        .select('*')
+        .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+
+      if (error) {
+        console.error('Error fetching friend connections:', error);
+        return;
+      }
+
+      setFriendConnections(data || []);
+    } catch (error) {
+      console.error('Error fetching friend connections:', error);
+    }
+  };
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleUserClick = (userId: string) => {
+    navigate(`/user/${userId}`);
+  };
+
+  const handleConnectClick = (e: React.MouseEvent, userId: string) => {
+    e.stopPropagation(); // Prevent triggering the card click
+    navigate(`/user/${userId}`);
+  };
+
+  const getFriendStatus = (userId: string) => {
+    if (!user || user.id === userId) return null;
+    
+    const connection = friendConnections.find(conn => 
+      (conn.user_id === user.id && conn.friend_id === userId) ||
+      (conn.user_id === userId && conn.friend_id === user.id)
     );
-  }
+    
+    return connection?.status || null;
+  };
+
+  const renderFriendButton = (userId: string) => {
+    if (!user || user.id === userId) return null;
+    
+    const status = getFriendStatus(userId);
+    
+    switch (status) {
+      case 'accepted':
+        return (
+          <Button variant="outline" size="sm" disabled className="flex items-center gap-2">
+            <UserCheck className="h-4 w-4" />
+            Friends
+          </Button>
+        );
+      case 'pending':
+        return (
+          <Button variant="outline" size="sm" disabled className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Pending
+          </Button>
+        );
+      case 'rejected':
+        return (
+          <Button variant="outline" size="sm" className="flex items-center gap-2">
+            <UserPlus className="h-4 w-4" />
+            Connect
+          </Button>
+        );
+      default:
+        return (
+          <Button variant="outline" size="sm" className="flex items-center gap-2">
+            <UserPlus className="h-4 w-4" />
+            Connect
+          </Button>
+        );
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="container mx-auto p-6 max-w-4xl">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-gray-900">Social Dashboard</h1>
-              <div className="text-sm text-gray-600">
-                Connect with friends and track internship progress together
-              </div>
-            </div>
-            
-            <Button 
-              variant="outline" 
-              onClick={() => window.location.href = '/dashboard'}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Social Hub</h1>
+          <p className="text-gray-600 mt-2">Connect with other users and find friends</p>
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={() => window.history.back()}
+          className="flex items-center gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+      </div>
+
+      {/* Search Bar */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              type="text"
+              placeholder="Search by username or display name..."
+              value={searchQuery}
+              onChange={handleSearch}
+              className="pl-10"
+            />
           </div>
-        </div>
-      </header>
+        </CardContent>
+      </Card>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome to the Social Hub, {user?.user_metadata?.name || user?.email || 'User'}!
-          </h2>
-          <p className="text-xl text-gray-600">
-            Connect with friends, share your internship journey, and get inspired by others
-          </p>
-        </div>
-
-        {/* Tabs */}
-        <Tabs defaultValue="feed" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="feed">Public Feed</TabsTrigger>
-            <TabsTrigger value="friends">Friends</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
-            <TabsTrigger value="stats">Stats</TabsTrigger>
-          </TabsList>
-
-          {/* Public Feed Tab */}
-          <TabsContent value="feed" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Users className="h-5 w-5 mr-2" />
-                  Public Applications Feed
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12">
-                  <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Coming Soon!</h3>
-                  <p className="text-gray-600 mb-4">
-                    Public applications feed will be available once the database is set up
-                  </p>
-                  <Button variant="outline">
-                    Setup Database
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Friends Tab */}
-          <TabsContent value="friends" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <UserPlus className="h-5 w-5 mr-2" />
-                  Friends & Connections
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {/* Current Friends */}
-                  <div className="border-t pt-4">
-                    <h4 className="font-medium text-gray-900 mb-3">Your Friends</h4>
-                    <div className="text-center py-8">
-                      <UserPlus className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-                      <p className="text-gray-600">No friends yet. Start connecting!</p>
+      {/* Users List */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            {searchQuery ? `Search Results (${filteredUsers.length})` : `All Users (${allUsers.length})`}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+              <p className="text-gray-600 mt-2">Loading users...</p>
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="text-center py-8">
+              <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">
+                {searchQuery ? 'No users found matching your search.' : 'No users have created profiles yet.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {filteredUsers.map((userProfile) => (
+                <Card 
+                  key={userProfile.id} 
+                  className="hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleUserClick(userProfile.user_id)}
+                >
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-blue-600 font-semibold text-sm">
+                              {userProfile.display_name?.charAt(0) || userProfile.username?.charAt(0) || 'U'}
+                            </span>
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">
+                              {userProfile.display_name || userProfile.username || 'Anonymous User'}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              @{userProfile.username || 'no-username'}
+                            </p>
+                          </div>
+                        </div>
+                        {userProfile.bio && (
+                          <p className="text-gray-700 mt-2 text-sm">{userProfile.bio}</p>
+                        )}
+                        <div className="flex flex-wrap gap-4 mt-3 text-xs text-gray-500">
+                          {userProfile.location && (
+                            <span>📍 {userProfile.location}</span>
+                          )}
+                          {userProfile.university && (
+                            <span>🎓 {userProfile.university}</span>
+                          )}
+                          {userProfile.major && (
+                            <span>📚 {userProfile.major}</span>
+                          )}
+                          {userProfile.graduation_year && (
+                            <span>📅 {userProfile.graduation_year}</span>
+                          )}
+                        </div>
+                      </div>
+                      {renderFriendButton(userProfile.user_id) || (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={(e) => handleConnectClick(e, userProfile.user_id)}
+                        >
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Connect
+                        </Button>
+                      )}
                     </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Activity Tab */}
-          <TabsContent value="activity" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <TrendingUp className="h-5 w-5 mr-2" />
-                  Activity Feed
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12">
-                  <TrendingUp className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Activity Feed</h3>
-                  <p className="text-gray-600 mb-4">
-                    Track your friends' internship progress and achievements
-                  </p>
-                  <Button variant="outline">
-                    Enable Tracking
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Stats Tab */}
-          <TabsContent value="stats" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <TrendingUp className="h-5 w-5 mr-2" />
-                  Social Statistics
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-blue-600">0</div>
-                    <div className="text-sm text-gray-600">Friends</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-green-600">0</div>
-                    <div className="text-sm text-gray-600">Connections</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-purple-600">0</div>
-                    <div className="text-sm text-gray-600">Interactions</div>
-                  </div>
-                </div>
-                <div className="mt-6 text-center">
-                  <p className="text-gray-600">Stats will populate as you connect with friends</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        {/* Quick Actions */}
-        <div className="mt-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button variant="outline" className="h-20 flex-col">
-                  <UserPlus className="h-6 w-6 mb-2" />
-                  <span>Setup Profile</span>
-                </Button>
-                <Button variant="outline" className="h-20 flex-col">
-                  <Users className="h-6 w-6 mb-2" />
-                  <span>Find Friends</span>
-                </Button>
-                <Button variant="outline" className="h-20 flex-col">
-                  <TrendingUp className="h-6 w-6 mb-2" />
-                  <span>Share Progress</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
-};
+}

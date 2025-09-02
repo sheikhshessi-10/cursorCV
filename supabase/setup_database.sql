@@ -297,5 +297,51 @@ CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- Create function to notify friends when someone applies to an internship
+CREATE OR REPLACE FUNCTION public.notify_friends_on_application()
+RETURNS trigger AS $$
+BEGIN
+    -- Only notify if this is a new application (INSERT) or status changed to 'accepted'/'rejected'/'interviewing'
+    IF TG_OP = 'INSERT' OR (TG_OP = 'UPDATE' AND OLD.status != NEW.status AND NEW.status IN ('accepted', 'rejected', 'interviewing')) THEN
+        -- Insert notifications for all accepted friends
+        INSERT INTO public.notifications (user_id, type, title, message, related_id)
+        SELECT 
+            fc.user_id,
+            CASE 
+                WHEN TG_OP = 'INSERT' THEN 'friend_application'
+                WHEN NEW.status = 'accepted' THEN 'friend_accepted'
+                WHEN NEW.status = 'rejected' THEN 'friend_rejected'
+                WHEN NEW.status = 'interviewing' THEN 'friend_interviewing'
+            END,
+            CASE 
+                WHEN TG_OP = 'INSERT' THEN 'New Application from Friend'
+                WHEN NEW.status = 'accepted' THEN 'Friend Got Accepted!'
+                WHEN NEW.status = 'rejected' THEN 'Friend Application Update'
+                WHEN NEW.status = 'interviewing' THEN 'Friend Got an Interview!'
+            END,
+            CASE 
+                WHEN TG_OP = 'INSERT' THEN up.display_name || ' applied for ' || COALESCE(NEW.position, 'a position') || ' at ' || COALESCE(NEW.company, 'a company')
+                WHEN NEW.status = 'accepted' THEN up.display_name || ' got accepted for ' || COALESCE(NEW.position, 'a position') || ' at ' || COALESCE(NEW.company, 'a company') || '! 🎉'
+                WHEN NEW.status = 'rejected' THEN up.display_name || ' was rejected for ' || COALESCE(NEW.position, 'a position') || ' at ' || COALESCE(NEW.company, 'a company')
+                WHEN NEW.status = 'interviewing' THEN up.display_name || ' got an interview for ' || COALESCE(NEW.position, 'a position') || ' at ' || COALESCE(NEW.company, 'a company') || '! 🎯'
+            END,
+            NEW.id
+        FROM friend_connections fc
+        JOIN user_profiles up ON up.user_id = NEW.user_id
+        WHERE fc.friend_id = NEW.user_id 
+        AND fc.status = 'accepted'
+        AND fc.user_id != NEW.user_id; -- Don't notify yourself
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create trigger to notify friends on application changes
+DROP TRIGGER IF EXISTS notify_friends_on_application_trigger ON cvs;
+CREATE TRIGGER notify_friends_on_application_trigger
+    AFTER INSERT OR UPDATE ON cvs
+    FOR EACH ROW EXECUTE FUNCTION public.notify_friends_on_application();
+
 -- Success message
 SELECT '🎉 Database setup completed successfully! Your multi-user social platform is ready!' as message; 

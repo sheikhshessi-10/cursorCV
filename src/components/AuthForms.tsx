@@ -14,6 +14,7 @@ export const AuthForms = () => {
   const [loading, setLoading] = useState(false);
   const [connectionError, setConnectionError] = useState(false);
 
+  
   // Login state
   const [loginData, setLoginData] = useState({
     email: '',
