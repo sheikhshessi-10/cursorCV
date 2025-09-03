@@ -27,7 +27,7 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
-interface CVRecord {
+interface Application {
   id: string;
   title: string;
   company: string;
@@ -45,12 +45,13 @@ interface CVRecord {
   interview_type?: string;
   interview_status?: string;
   interview_notes?: string;
+  application_date?: string;
 }
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const [cvs, setCvs] = useState<CVRecord[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showPremiumDialog, setShowPremiumDialog] = useState(false);
@@ -59,11 +60,11 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (user) {
-      fetchCVs();
+      fetchApplications();
     }
   }, [user]);
 
-  const fetchCVs = async () => {
+  const fetchApplications = async () => {
     if (!user) return;
 
     try {
@@ -71,27 +72,27 @@ const Dashboard = () => {
       
       if (user.id.includes('demo')) {
         // Demo mode - use local storage
-        const storedCVs = localStorage.getItem('demoCVs');
-        if (storedCVs) {
-          setCvs(JSON.parse(storedCVs));
+        const storedApplications = localStorage.getItem('demoApplications');
+        if (storedApplications) {
+          setApplications(JSON.parse(storedApplications));
         }
       } else {
         // Real user - fetch from Supabase
         const { data, error } = await supabase
-          .from('cvs')
+          .from('applications')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
         if (error) {
-          console.error('Error fetching CVs:', error);
+          console.error('Error fetching applications:', error);
           toast.error('Failed to fetch applications');
         } else {
-          setCvs(data || []);
+          setApplications(data || []);
         }
       }
     } catch (error) {
-      console.error('Error fetching CVs:', error);
+      console.error('Error fetching applications:', error);
       toast.error('Failed to fetch applications');
     } finally {
       setLoading(false);
@@ -105,10 +106,10 @@ const Dashboard = () => {
       const newApplication = {
         id: crypto.randomUUID(),
         title: applicationData.title || 'Untitled Application',
-        company: applicationData.company || '',
-        position: applicationData.position || '',
-        status: 'draft',
-        job_description: applicationData.jobDescription || '',
+                  company: applicationData.company || '',
+          position: applicationData.position || '',
+          status: 'pending',
+          job_description: applicationData.jobDescription || '',
         cv_content: applicationData.cvContent || '',
         cv_data: applicationData.cvData || {},
         is_public: false, // Default to private, user can make public later
@@ -120,14 +121,14 @@ const Dashboard = () => {
 
       if (user.id.includes('demo')) {
         // Demo mode - save to local storage
-        const updatedCVs = [newApplication, ...cvs];
-        setCvs(updatedCVs);
-        localStorage.setItem('demoCVs', JSON.stringify(updatedCVs));
+        const updatedApplications = [newApplication, ...applications];
+        setApplications(updatedApplications);
+        localStorage.setItem('demoApplications', JSON.stringify(updatedApplications));
         toast.success('Application created successfully! (Saved locally)');
       } else {
         // Real user - save to Supabase
         const { data, error } = await supabase
-          .from('cvs')
+          .from('applications')
           .insert([newApplication])
           .select()
           .single();
@@ -136,7 +137,7 @@ const Dashboard = () => {
           console.error('Error creating application:', error);
           toast.error('Failed to create application');
         } else {
-          setCvs([data, ...cvs]);
+          setApplications([data, ...applications]);
           toast.success('Application created successfully! (Saved to database)');
         }
       }
@@ -154,14 +155,14 @@ const Dashboard = () => {
     try {
       if (user.id.includes('demo')) {
         // Demo mode - remove from local storage
-        const updatedCVs = cvs.filter(cv => cv.id !== id);
-        setCvs(updatedCVs);
-        localStorage.setItem('demoCVs', JSON.stringify(updatedCVs));
+        const updatedApplications = applications.filter(app => app.id !== id);
+        setApplications(updatedApplications);
+        localStorage.setItem('demoApplications', JSON.stringify(updatedApplications));
         toast.success('Application deleted successfully!');
       } else {
         // Real user - delete from Supabase
         const { error } = await supabase
-          .from('cvs')
+          .from('applications')
           .delete()
           .eq('id', id)
           .eq('user_id', user.id);
@@ -170,7 +171,7 @@ const Dashboard = () => {
           console.error('Error deleting application:', error);
           toast.error('Failed to delete application');
         } else {
-          setCvs(cvs.filter(cv => cv.id !== id));
+          setApplications(applications.filter(app => app.id !== id));
           toast.success('Application deleted successfully!');
         }
       }
@@ -186,16 +187,16 @@ const Dashboard = () => {
     try {
       if (user.id.includes('demo')) {
         // Demo mode - update local storage
-        const updatedCVs = cvs.map(cv => 
-          cv.id === id ? { ...cv, status: newStatus, updated_at: new Date().toISOString() } : cv
+        const updatedApplications = applications.map(app => 
+          app.id === id ? { ...app, status: newStatus, updated_at: new Date().toISOString() } : app
         );
-        setCvs(updatedCVs);
-        localStorage.setItem('demoCVs', JSON.stringify(updatedCVs));
+        setApplications(updatedApplications);
+        localStorage.setItem('demoApplications', JSON.stringify(updatedApplications));
         toast.success('Status updated successfully!');
       } else {
         // Real user - update in Supabase
         const { error } = await supabase
-          .from('cvs')
+          .from('applications')
           .update({ 
             status: newStatus, 
             updated_at: new Date().toISOString() 
@@ -207,9 +208,9 @@ const Dashboard = () => {
           console.error('Error updating status:', error);
           toast.error('Failed to update status');
         } else {
-          setCvs(cvs.map(cv => 
-            cv.id === id ? { ...cv, status: newStatus, updated_at: new Date().toISOString() } : cv
-          ));
+                  setApplications(applications.map(app =>
+          app.id === id ? { ...app, status: newStatus, updated_at: new Date().toISOString() } : app
+        ));
           toast.success('Status updated successfully!');
         }
       }
@@ -230,7 +231,7 @@ const Dashboard = () => {
   };
 
   const getStatusCount = (status: string) => {
-    return cvs.filter(cv => cv.status === status).length;
+    return applications.filter(app => app.status === status).length;
   };
 
   const handleAccessCodeSubmit = () => {
@@ -321,7 +322,7 @@ const Dashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total Applications</p>
-                  <p className="text-2xl font-bold">{cvs.length}</p>
+                  <p className="text-2xl font-bold">{applications.length}</p>
                 </div>
                 <FileText className="h-8 w-8 text-blue-600" />
               </div>
@@ -412,7 +413,7 @@ const Dashboard = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-4 text-gray-600">Loading applications...</p>
           </div>
-        ) : cvs.length === 0 ? (
+        ) : applications.length === 0 ? (
           <Card>
             <CardContent className="text-center py-12">
               <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -426,13 +427,13 @@ const Dashboard = () => {
           </Card>
         ) : (
           <div className="space-y-4">
-            {cvs.map((cv) => (
-              <ApplicationCard
-                key={cv.id}
-                application={cv}
-                onDelete={handleDeleteApplication}
-                onStatusUpdate={handleStatusUpdate}
-              />
+            {applications.map((app) => (
+                              <ApplicationCard
+                  key={app.id}
+                  application={app}
+                  onDelete={handleDeleteApplication}
+                  onStatusUpdate={handleStatusUpdate}
+                />
             ))}
           </div>
         )}

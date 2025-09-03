@@ -70,8 +70,17 @@ export function SocialDashboard() {
         return;
       }
 
-      setAllUsers(data || []);
-      setFilteredUsers(data || []);
+      // Filter out the current user from the list
+      const otherUsers = data?.filter(userProfile => userProfile.user_id !== user?.id) || [];
+      
+      console.log('🔍 All users fetched:', data?.length || 0);
+      console.log('🔍 Current user ID:', user?.id);
+      console.log('🔍 Other users (filtered):', otherUsers.length);
+      console.log('🔍 Raw user data:', data);
+      console.log('🔍 Filtered user data:', otherUsers);
+      
+      setAllUsers(otherUsers);
+      setFilteredUsers(otherUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
     } finally {
@@ -87,13 +96,14 @@ export function SocialDashboard() {
         .from('friend_connections')
         .select('*')
         .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
-        .limit(100); // Add limit to prevent large queries
+        .limit(100);
 
       if (error) {
         console.error('Error fetching friend connections:', error);
         return;
       }
 
+      console.log('🔍 Fetched friend connections:', data);
       setFriendConnections(data || []);
     } catch (error) {
       console.error('Error fetching friend connections:', error);
@@ -114,20 +124,28 @@ export function SocialDashboard() {
   };
 
   const getFriendStatus = (userId: string) => {
-    if (!user?.id || user.id === userId) return null;
+    if (!user?.id || user.id === userId) {
+      console.log('🔍 getFriendStatus: Skipping current user or no user', { currentUserId: user?.id, targetUserId: userId });
+      return null;
+    }
     
     const connection = friendConnections.find(conn => 
       (conn.user_id === user.id && conn.friend_id === userId) ||
       (conn.user_id === userId && conn.friend_id === user.id)
     );
     
+    console.log('🔍 getFriendStatus: Found connection', { connection, status: connection?.status });
     return connection?.status || null;
   };
 
   const renderFriendButton = (userId: string) => {
-    if (!user?.id || user.id === userId) return null;
+    if (!user?.id || user.id === userId) {
+      console.log('🔍 renderFriendButton: Skipping current user', { currentUserId: user?.id, targetUserId: userId });
+      return null;
+    }
     
     const status = getFriendStatus(userId);
+    console.log('🔍 renderFriendButton: Rendering button for', { userId, status });
     
     switch (status) {
       case 'accepted':
@@ -201,6 +219,11 @@ export function SocialDashboard() {
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             {searchQuery ? `Search Results (${filteredUsers.length})` : `All Users (${allUsers.length})`}
+            {process.env.NODE_ENV === 'development' && (
+              <span className="text-xs text-gray-500 ml-2">
+                (Current user: {user?.email})
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -218,7 +241,9 @@ export function SocialDashboard() {
             </div>
           ) : (
             <div className="grid gap-4">
-              {filteredUsers.map((userProfile) => (
+              {filteredUsers
+                .filter(userProfile => userProfile.user_id !== user?.id) // Double-check filter
+                .map((userProfile) => (
                 <Card 
                   key={userProfile.id} 
                   className="hover:shadow-md transition-shadow cursor-pointer"

@@ -82,7 +82,7 @@ export function UserProfilePage() {
   const fetchUserApplications = async () => {
     try {
       const { data, error } = await supabase
-        .from('cvs')
+        .from('applications')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
@@ -104,18 +104,24 @@ export function UserProfilePage() {
     if (!currentUser?.id || !userId) return;
     
     try {
+      // Check both directions: sent and received requests
       const { data, error } = await supabase
         .from('friend_connections')
         .select('*')
-        .or(`and(user_id.eq.${currentUser.id},friend_id.eq.${userId}),and(user_id.eq.${userId},friend_id.eq.${currentUser.id})`)
-        .single();
+        .or(`user_id.eq.${currentUser.id},friend_id.eq.${currentUser.id}`);
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        console.error('Error fetching friend connection:', error);
+      if (error) {
+        console.error('Error fetching friend connections:', error);
         return;
       }
 
-      setFriendConnection(data || null);
+      // Find the connection that involves both users
+      const connection = data?.find(conn => 
+        (conn.user_id === currentUser.id && conn.friend_id === userId) ||
+        (conn.user_id === userId && conn.friend_id === currentUser.id)
+      );
+      
+      setFriendConnection(connection || null);
     } catch (error) {
       console.error('Error fetching friend connection:', error);
     }

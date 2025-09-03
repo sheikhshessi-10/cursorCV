@@ -33,23 +33,24 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 2. Enhanced CVs Table
-CREATE TABLE IF NOT EXISTS cvs (
+-- 2. Applications Table (renamed from cvs for clarity)
+CREATE TABLE IF NOT EXISTS applications (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     title VARCHAR(200) NOT NULL,
     company VARCHAR(200),
     position VARCHAR(200),
-    status VARCHAR(50) DEFAULT 'draft',
+    status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'applied', 'interviewing', 'accepted', 'rejected')),
     job_description TEXT,
     cv_content TEXT,
     cv_data JSONB,
-    is_public BOOLEAN DEFAULT false,
+    is_public BOOLEAN DEFAULT true,
     allow_comments BOOLEAN DEFAULT true,
     interview_date DATE,
     interview_type VARCHAR(100),
     interview_status VARCHAR(100),
     interview_notes TEXT,
+    application_date DATE DEFAULT CURRENT_DATE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -68,7 +69,7 @@ CREATE TABLE IF NOT EXISTS friend_connections (
 -- 4. Application Comments Table
 CREATE TABLE IF NOT EXISTS application_comments (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    cv_id UUID REFERENCES cvs(id) ON DELETE CASCADE,
+    application_id UUID REFERENCES applications(id) ON DELETE CASCADE,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     comment TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -103,11 +104,11 @@ CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_username ON user_profiles(username);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_is_public ON user_profiles(is_public);
 
-CREATE INDEX IF NOT EXISTS idx_cvs_user_id ON cvs(user_id);
-CREATE INDEX IF NOT EXISTS idx_cvs_status ON cvs(status);
-CREATE INDEX IF NOT EXISTS idx_cvs_is_public ON cvs(is_public);
-CREATE INDEX IF NOT EXISTS idx_cvs_company ON cvs(company);
-CREATE INDEX IF NOT EXISTS idx_cvs_position ON cvs(position);
+CREATE INDEX IF NOT EXISTS idx_applications_user_id ON applications(user_id);
+CREATE INDEX IF NOT EXISTS idx_applications_status ON applications(status);
+CREATE INDEX IF NOT EXISTS idx_applications_is_public ON applications(is_public);
+CREATE INDEX IF NOT EXISTS idx_applications_company ON applications(company);
+CREATE INDEX IF NOT EXISTS idx_applications_position ON applications(position);
 
 CREATE INDEX IF NOT EXISTS idx_friend_connections_user_id ON friend_connections(user_id);
 CREATE INDEX IF NOT EXISTS idx_friend_connections_friend_id ON friend_connections(friend_id);
@@ -128,9 +129,9 @@ CREATE TRIGGER update_user_profiles_updated_at
     BEFORE UPDATE ON user_profiles 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-DROP TRIGGER IF EXISTS update_cvs_updated_at ON cvs;
-CREATE TRIGGER update_cvs_updated_at 
-    BEFORE UPDATE ON cvs 
+DROP TRIGGER IF EXISTS update_applications_updated_at ON applications;
+CREATE TRIGGER update_applications_updated_at 
+    BEFORE UPDATE ON applications 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 DROP TRIGGER IF EXISTS update_friend_connections_updated_at ON friend_connections;
@@ -150,7 +151,7 @@ CREATE TRIGGER update_notifications_updated_at
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE cvs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE friend_connections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE application_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
@@ -163,7 +164,7 @@ CREATE POLICY "Users can view their own profile" ON user_profiles
 
 DROP POLICY IF EXISTS "Users can view public profiles" ON user_profiles;
 CREATE POLICY "Users can view public profiles" ON user_profiles
-    FOR SELECT USING (is_public = true);
+    FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Users can insert their own profile" ON user_profiles;
 CREATE POLICY "Users can insert their own profile" ON user_profiles
@@ -177,25 +178,25 @@ DROP POLICY IF EXISTS "Users can delete their own profile" ON user_profiles;
 CREATE POLICY "Users can delete their own profile" ON user_profiles
     FOR DELETE USING (auth.uid() = user_id);
 
--- RLS Policies for cvs
-DROP POLICY IF EXISTS "Users can view their own CVs" ON cvs;
-CREATE POLICY "Users can view their own CVs" ON cvs
+-- RLS Policies for applications
+DROP POLICY IF EXISTS "Users can view their own applications" ON applications;
+CREATE POLICY "Users can view their own applications" ON applications
     FOR SELECT USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Users can view public CVs" ON cvs;
-CREATE POLICY "Users can view public CVs" ON cvs
-    FOR SELECT USING (is_public = true);
+DROP POLICY IF EXISTS "Users can view public applications" ON applications;
+CREATE POLICY "Users can view public applications" ON applications
+    FOR SELECT USING (true);
 
-DROP POLICY IF EXISTS "Users can insert their own CVs" ON cvs;
-CREATE POLICY "Users can insert their own CVs" ON cvs
+DROP POLICY IF EXISTS "Users can insert their own applications" ON applications;
+CREATE POLICY "Users can insert their own applications" ON applications
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Users can update their own CVs" ON cvs;
-CREATE POLICY "Users can update their own CVs" ON cvs
+DROP POLICY IF EXISTS "Users can update their own applications" ON applications;
+CREATE POLICY "Users can update their own applications" ON applications
     FOR UPDATE USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Users can delete their own CVs" ON cvs;
-CREATE POLICY "Users can delete their own CVs" ON cvs
+DROP POLICY IF EXISTS "Users can delete their own applications" ON applications;
+CREATE POLICY "Users can delete their own applications" ON applications
     FOR DELETE USING (auth.uid() = user_id);
 
 -- RLS Policies for friend_connections
@@ -279,11 +280,37 @@ CREATE POLICY "Users can insert their own activity" ON activity_feed
 -- Create a function to automatically create user profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
+DECLARE
+    base_username VARCHAR(50);
+    final_username VARCHAR(50);
+    counter INTEGER := 0;
 BEGIN
+    -- Get the username from metadata or generate from email
+    base_username := COALESCE(NEW.raw_user_meta_data->>'username', split_part(NEW.email, '@', 1));
+    
+    -- Ensure username is unique by adding numbers if needed
+    final_username := base_username;
+    WHILE EXISTS (SELECT 1 FROM user_profiles WHERE username = final_username) LOOP
+        counter := counter + 1;
+        final_username := base_username || counter::TEXT;
+        
+        -- Prevent infinite loop (max 999)
+        IF counter > 999 THEN
+            final_username := base_username || '_' || floor(random() * 1000)::TEXT;
+            EXIT;
+        END IF;
+    END LOOP;
+    
+    -- Log the values for debugging
+    RAISE NOTICE 'Creating profile for user % with username: % and display_name: %', 
+        NEW.id, 
+        final_username, 
+        COALESCE(NEW.raw_user_meta_data->>'name', NEW.email);
+    
     INSERT INTO public.user_profiles (user_id, username, display_name, is_public)
     VALUES (
         NEW.id,
-        COALESCE(NEW.raw_user_meta_data->>'username', split_part(NEW.email, '@', 1)),
+        final_username,
         COALESCE(NEW.raw_user_meta_data->>'name', NEW.email),
         true
     );
@@ -338,10 +365,122 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Create trigger to notify friends on application changes
-DROP TRIGGER IF EXISTS notify_friends_on_application_trigger ON cvs;
+DROP TRIGGER IF EXISTS notify_friends_on_application_trigger ON applications;
 CREATE TRIGGER notify_friends_on_application_trigger
-    AFTER INSERT OR UPDATE ON cvs
+    AFTER INSERT OR UPDATE ON applications
     FOR EACH ROW EXECUTE FUNCTION public.notify_friends_on_application();
+
+-- Function to fix existing user profiles with incorrect usernames
+CREATE OR REPLACE FUNCTION fix_existing_usernames()
+RETURNS void AS $$
+DECLARE
+    profile_record RECORD;
+    new_username VARCHAR(50);
+    counter INTEGER;
+BEGIN
+    -- Loop through all user profiles
+    FOR profile_record IN 
+        SELECT up.id, up.user_id, up.username, up.display_name, u.email
+        FROM user_profiles up
+        JOIN auth.users u ON up.user_id = u.id
+        WHERE up.username = u.email OR up.username IS NULL
+    LOOP
+        -- Generate new username from email
+        new_username := split_part(profile_record.email, '@', 1);
+        counter := 0;
+        
+        -- Ensure uniqueness
+        WHILE EXISTS (SELECT 1 FROM user_profiles WHERE username = new_username AND id != profile_record.id) LOOP
+            counter := counter + 1;
+            new_username := split_part(profile_record.email, '@', 1) || counter::TEXT;
+        END LOOP;
+        
+        -- Update the profile
+        UPDATE user_profiles 
+        SET username = new_username,
+            display_name = COALESCE(profile_record.display_name, new_username)
+        WHERE id = profile_record.id;
+        
+        RAISE NOTICE 'Fixed username for user %: % -> %', profile_record.user_id, profile_record.username, new_username;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Temporary debugging policy - allows viewing all profiles (remove in production)
+DROP POLICY IF EXISTS "Debug: View all profiles" ON user_profiles;
+CREATE POLICY "Debug: View all profiles" ON user_profiles
+    FOR SELECT USING (true);
+
+-- Function to debug user profiles
+CREATE OR REPLACE FUNCTION debug_user_profiles()
+RETURNS TABLE (
+    profile_id UUID,
+    user_id UUID,
+    username TEXT,
+    display_name TEXT,
+    is_public BOOLEAN,
+    auth_email TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        up.id,
+        up.user_id,
+        up.username,
+        up.display_name,
+        up.is_public,
+        u.email
+    FROM user_profiles up
+    LEFT JOIN auth.users u ON up.user_id = u.id
+    ORDER BY up.created_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to create missing user profiles for existing users
+CREATE OR REPLACE FUNCTION create_missing_user_profiles()
+RETURNS void AS $$
+DECLARE
+    auth_user RECORD;
+    new_username VARCHAR(50);
+    counter INTEGER;
+BEGIN
+    -- Loop through all auth users that don't have profiles
+    FOR auth_user IN 
+        SELECT u.id, u.email, u.raw_user_meta_data
+        FROM auth.users u
+        LEFT JOIN user_profiles up ON u.id = up.user_id
+        WHERE up.id IS NULL
+    LOOP
+        -- Generate username from email
+        new_username := split_part(auth_user.email, '@', 1);
+        counter := 0;
+        
+        -- Ensure uniqueness
+        WHILE EXISTS (SELECT 1 FROM user_profiles WHERE username = new_username) LOOP
+            counter := counter + 1;
+            new_username := split_part(auth_user.email, '@', 1) || counter::TEXT;
+        END LOOP;
+        
+        -- Create the profile
+        INSERT INTO user_profiles (user_id, username, display_name, is_public)
+        VALUES (
+            auth_user.id,
+            new_username,
+            COALESCE(auth_user.raw_user_meta_data->>'name', auth_user.email),
+            true
+        );
+        
+        RAISE NOTICE 'Created missing profile for user %: % with username: %', 
+            auth_user.id, auth_user.email, new_username;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Note: Supabase automatically enforces unique emails in auth.users table
+-- This ensures one email = one account
+
+-- Create missing user profiles for existing users
+SELECT create_missing_user_profiles();
 
 -- Success message
 SELECT '🎉 Database setup completed successfully! Your multi-user social platform is ready!' as message; 

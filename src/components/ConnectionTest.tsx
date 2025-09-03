@@ -58,7 +58,7 @@ export const ConnectionTest = () => {
       // Test 4: Simple query (this will fail until we create the tables)
       console.log('📊 Testing database query...');
       const { data: queryData, error: queryError } = await supabase
-        .from('cvs')
+        .from('applications')
         .select('count')
         .limit(1);
       console.log('Query test result:', { queryData, queryError });

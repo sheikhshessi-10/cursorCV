@@ -30,6 +30,8 @@ export const AuthForms = () => {
     lastName: '',
     username: ''
   });
+  
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +62,28 @@ export const AuthForms = () => {
       return;
     }
 
+    if (usernameStatus === 'taken') {
+      toast.error('Please choose a different username');
+      return;
+    }
+
+    if (signupData.username.length < 3) {
+      toast.error('Username must be at least 3 characters long');
+      return;
+    }
+
+    if (signupData.password.length < 6) {
+      toast.error('Password must be at least 6 characters long');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(signupData.email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -84,6 +108,34 @@ export const AuthForms = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkUsernameAvailability = async (username: string) => {
+    if (username.length < 3) {
+      setUsernameStatus('idle');
+      return;
+    }
+    
+    setUsernameStatus('checking');
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('username')
+        .eq('username', username)
+        .single();
+      
+      if (error && error.code === 'PGRST116') {
+        // No rows returned - username is available
+        setUsernameStatus('available');
+      } else if (data) {
+        // Username exists
+        setUsernameStatus('taken');
+      }
+    } catch (err) {
+      console.error('Error checking username:', err);
+      setUsernameStatus('idle');
     }
   };
 
@@ -228,10 +280,25 @@ export const AuthForms = () => {
                   <Input
                     id="signup-username"
                     value={signupData.username}
-                    onChange={(e) => setSignupData({...signupData, username: e.target.value})}
+                    onChange={(e) => {
+                      const username = e.target.value;
+                      setSignupData({...signupData, username});
+                      // Debounced username check
+                      setTimeout(() => checkUsernameAvailability(username), 500);
+                    }}
                     placeholder="johndoe"
                     required
+                    className={usernameStatus === 'taken' ? 'border-red-500' : usernameStatus === 'available' ? 'border-green-500' : ''}
                   />
+                  {usernameStatus === 'checking' && (
+                    <p className="text-sm text-blue-600 mt-1">Checking availability...</p>
+                  )}
+                  {usernameStatus === 'available' && (
+                    <p className="text-sm text-green-600 mt-1">✅ Username available!</p>
+                  )}
+                  {usernameStatus === 'taken' && (
+                    <p className="text-sm text-red-600 mt-1">❌ Username already taken</p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="signup-email">Email</Label>

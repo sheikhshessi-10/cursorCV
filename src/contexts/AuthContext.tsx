@@ -87,13 +87,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signUp = async (email: string, password: string, userData: any) => {
-    console.log('🚀 Attempting signup for:', email);
+    console.log('🚀 Attempting signup for:', email, 'with data:', userData);
+    
+    // Validate username uniqueness before signup
+    if (userData.username) {
+      try {
+        const { data: existingUser, error: checkError } = await supabase
+          .from('user_profiles')
+          .select('username')
+          .eq('username', userData.username)
+          .single();
+        
+        if (existingUser && !checkError) {
+          console.error('❌ Username already exists:', userData.username);
+          return { 
+            data: null, 
+            error: { message: 'Username already taken. Please choose a different one.' } 
+          };
+        }
+      } catch (err) {
+        console.log('✅ Username available:', userData.username);
+      }
+    }
+    
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: userData
+          data: {
+            username: userData.username,
+            first_name: userData.first_name,
+            last_name: userData.last_name,
+            name: `${userData.first_name} ${userData.last_name}`.trim()
+          }
         }
       });
       
