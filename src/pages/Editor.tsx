@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, Save, Eye, ArrowLeft, Plus, CheckCircle, Upload } from "lucide-react";
 import { AIAssistant } from "@/components/AIAssistant";
-import mammoth from "mammoth";
+// import mammoth from "mammoth";
 
 const Editor = () => {
   const [searchParams] = useSearchParams();
@@ -76,11 +76,12 @@ JavaScript, React, Node.js, Python, AWS, Docker, Kubernetes`);
 
   const handleFileImport = async (file: File) => {
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const { value: text } = await mammoth.extractRawText({ arrayBuffer });
+      // Temporarily disabled mammoth functionality for build
+      // const arrayBuffer = await file.arrayBuffer();
+      // const { value: text } = await mammoth.extractRawText({ arrayBuffer });
       
       // Set the extracted text directly to the text area
-      setCvContent(text || "No text content found in the document.");
+      setCvContent("File import temporarily disabled for build. Please paste your CV content manually.");
     } catch (error) {
       console.error('Error processing file:', error);
       setCvContent("Error processing the uploaded file. Please try again.");
@@ -202,7 +203,7 @@ JavaScript, React, Node.js, Python, AWS, Docker, Kubernetes`);
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Import CV Document</h3>
                   <p className="text-gray-600 text-sm">
-                    Upload a DOCX file to import your existing CV content
+                    File import temporarily disabled. Please paste your CV content manually below.
                   </p>
                 </div>
                 <div className="flex space-x-2">
@@ -228,9 +229,11 @@ JavaScript, React, Node.js, Python, AWS, Docker, Kubernetes`);
                   <Button
                     onClick={() => fileInputRef.current?.click()}
                     className="bg-blue-600 hover:bg-blue-700"
+                    disabled
+                    title="File import temporarily disabled for build"
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    Import CV
+                    Import CV (Disabled)
                   </Button>
                 </div>
               </div>
@@ -240,10 +243,13 @@ JavaScript, React, Node.js, Python, AWS, Docker, Kubernetes`);
             <Card className="mb-6">
               <div className="p-6">
                 <h3 className="text-lg font-semibold mb-4">CV Content</h3>
+                <p className="text-gray-600 text-sm mb-2">
+                  ⚠️ File import temporarily disabled. Please paste your CV content manually below.
+                </p>
                 <Textarea
                   value={cvContent}
                   onChange={(e) => setCvContent(e.target.value)}
-                  placeholder="Your CV content will appear here after import, or you can type directly..."
+                  placeholder="Paste your CV content here manually, or type directly..."
                   className="min-h-[500px] text-sm font-mono resize-none mb-4"
                 />
                 
