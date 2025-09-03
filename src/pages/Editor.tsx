@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, Save, Eye, ArrowLeft, Plus, CheckCircle, Upload } from "lucide-react";
 import { AIAssistant } from "@/components/AIAssistant";
+import { toast } from "sonner";
 // import mammoth from "mammoth";
 
 const Editor = () => {
@@ -76,12 +77,18 @@ JavaScript, React, Node.js, Python, AWS, Docker, Kubernetes`);
 
   const handleFileImport = async (file: File) => {
     try {
-      // Temporarily disabled mammoth functionality for build
-      // const arrayBuffer = await file.arrayBuffer();
-      // const { value: text } = await mammoth.extractRawText({ arrayBuffer });
-      
-      // Set the extracted text directly to the text area
-      setCvContent("File import temporarily disabled for build. Please paste your CV content manually.");
+      // Simple text file reading as alternative to mammoth
+      if (file.type === "text/plain") {
+        const text = await file.text();
+        setCvContent(text);
+        toast.success("Text file imported successfully!");
+      } else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+        // DOCX files - show message to paste content manually
+        setCvContent("DOCX import temporarily disabled. Please copy and paste your CV content manually below.");
+        toast.info("Please paste your CV content manually");
+      } else {
+        toast.error("Please select a .txt or .docx file");
+      }
     } catch (error) {
       console.error('Error processing file:', error);
       setCvContent("Error processing the uploaded file. Please try again.");
@@ -203,7 +210,7 @@ JavaScript, React, Node.js, Python, AWS, Docker, Kubernetes`);
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Import CV Document</h3>
                   <p className="text-gray-600 text-sm">
-                    File import temporarily disabled. Please paste your CV content manually below.
+                    Upload a .txt file or paste your CV content manually below. DOCX import temporarily disabled.
                   </p>
                 </div>
                 <div className="flex space-x-2">
@@ -216,7 +223,7 @@ JavaScript, React, Node.js, Python, AWS, Docker, Kubernetes`);
                   </Button>
                   <input
                     type="file"
-                    accept=".docx"
+                    accept=".docx,.txt"
                     ref={fileInputRef}
                     style={{ display: 'none' }}
                     onChange={(e) => {
@@ -229,11 +236,10 @@ JavaScript, React, Node.js, Python, AWS, Docker, Kubernetes`);
                   <Button
                     onClick={() => fileInputRef.current?.click()}
                     className="bg-blue-600 hover:bg-blue-700"
-                    disabled
-                    title="File import temporarily disabled for build"
+                    title="Upload .txt file or paste content manually"
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    Import CV (Disabled)
+                    Import CV
                   </Button>
                 </div>
               </div>
@@ -244,7 +250,7 @@ JavaScript, React, Node.js, Python, AWS, Docker, Kubernetes`);
               <div className="p-6">
                 <h3 className="text-lg font-semibold mb-4">CV Content</h3>
                 <p className="text-gray-600 text-sm mb-2">
-                  ⚠️ File import temporarily disabled. Please paste your CV content manually below.
+                  📝 Upload a .txt file or paste your CV content manually below. DOCX import temporarily disabled.
                 </p>
                 <Textarea
                   value={cvContent}
