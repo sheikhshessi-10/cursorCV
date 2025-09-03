@@ -24,13 +24,13 @@ export function NotificationsPanel() {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchNotifications();
     }
-  }, [user]);
+  }, [user?.id]);
 
   const fetchNotifications = async () => {
-    if (!user) return;
+    if (!user?.id) return;
     
     try {
       setLoading(true);
@@ -77,7 +77,7 @@ export function NotificationsPanel() {
   };
 
   const markAllAsRead = async () => {
-    if (!user) return;
+    if (!user?.id) return;
     
     try {
       const { error } = await supabase
@@ -118,7 +118,7 @@ export function NotificationsPanel() {
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
-  if (!user) return null;
+  if (!user?.id) return null;
 
   return (
     <div className="relative">

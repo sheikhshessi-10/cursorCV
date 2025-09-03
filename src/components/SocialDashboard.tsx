@@ -39,11 +39,11 @@ export function SocialDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchAllUsers();
-    if (user) {
+    if (user?.id) {
+      fetchAllUsers();
       fetchFriendConnections();
     }
-  }, [user]);
+  }, [user?.id]);
 
   useEffect(() => {
     if (searchQuery.trim() === '') {
@@ -80,13 +80,14 @@ export function SocialDashboard() {
   };
 
   const fetchFriendConnections = async () => {
-    if (!user) return;
+    if (!user?.id) return;
     
     try {
       const { data, error } = await supabase
         .from('friend_connections')
         .select('*')
-        .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+        .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
+        .limit(100); // Add limit to prevent large queries
 
       if (error) {
         console.error('Error fetching friend connections:', error);
@@ -113,7 +114,7 @@ export function SocialDashboard() {
   };
 
   const getFriendStatus = (userId: string) => {
-    if (!user || user.id === userId) return null;
+    if (!user?.id || user.id === userId) return null;
     
     const connection = friendConnections.find(conn => 
       (conn.user_id === user.id && conn.friend_id === userId) ||
@@ -124,7 +125,7 @@ export function SocialDashboard() {
   };
 
   const renderFriendButton = (userId: string) => {
-    if (!user || user.id === userId) return null;
+    if (!user?.id || user.id === userId) return null;
     
     const status = getFriendStatus(userId);
     

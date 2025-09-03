@@ -54,11 +54,11 @@ export function UserProfilePage() {
     if (userId) {
       fetchUserProfile();
       fetchUserApplications();
-      if (currentUser && userId !== currentUser.id) {
+      if (currentUser?.id && userId !== currentUser.id) {
         fetchFriendConnection();
       }
     }
-  }, [userId, currentUser]);
+  }, [userId, currentUser?.id]);
 
   const fetchUserProfile = async () => {
     try {
@@ -101,7 +101,7 @@ export function UserProfilePage() {
   };
 
   const fetchFriendConnection = async () => {
-    if (!currentUser || !userId) return;
+    if (!currentUser?.id || !userId) return;
     
     try {
       const { data, error } = await supabase
@@ -122,7 +122,7 @@ export function UserProfilePage() {
   };
 
   const sendFriendRequest = async () => {
-    if (!currentUser || !userId || friendActionLoading) return;
+    if (!currentUser?.id || !userId || friendActionLoading) return;
     
     setFriendActionLoading(true);
     try {
@@ -261,7 +261,7 @@ export function UserProfilePage() {
   };
 
   const renderFriendActionButton = () => {
-    if (!currentUser || !userId || currentUser.id === userId) {
+    if (!currentUser?.id || !userId || currentUser.id === userId) {
       return null; // Don't show friend actions for yourself
     }
 
