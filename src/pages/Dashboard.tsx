@@ -18,7 +18,12 @@ import {
   CheckCircle,
   Users,
   Search,
-  Filter
+  Copy,
+  Filter,
+  X,
+  Calendar,
+  MapPin,
+  Building
 } from 'lucide-react';
 import { ApplicationCard } from '@/components/ApplicationCard';
 import { CreateApplicationDialog } from '@/components/CreateApplicationDialog';
@@ -26,6 +31,8 @@ import { NotificationsPanel } from '@/components/NotificationsPanel';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface Application {
   id: string;
@@ -57,6 +64,8 @@ const Dashboard = () => {
   const [showPremiumDialog, setShowPremiumDialog] = useState(false);
   const [accessCode, setAccessCode] = useState('');
   const [showCodeInput, setShowCodeInput] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [showApplicationModal, setShowApplicationModal] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -225,9 +234,28 @@ const Dashboard = () => {
       const { error } = await signOut();
       if (error) throw error;
       toast.success('Logged out successfully');
+      navigate('/'); // Navigate back to login page
     } catch (error: any) {
       toast.error('Error logging out');
     }
+  };
+
+  const handleApplicationClick = (application: Application) => {
+    setSelectedApplication(application);
+    setShowApplicationModal(true);
+  };
+
+  const handleStatusChange = async (applicationId: string, newStatus: string) => {
+    try {
+      await handleStatusUpdate(applicationId, newStatus);
+      toast.success(`Status updated to ${newStatus}`);
+    } catch (error) {
+      toast.error('Failed to update status');
+    }
+  };
+
+  const handleStatusBadgeClick = (event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent card click when clicking status badge
   };
 
   const getStatusCount = (status: string) => {
@@ -254,12 +282,19 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white/95 backdrop-blur-sm shadow-sm border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-gray-900">CV Builder</h1>
-              <div className="hidden md:flex items-center space-x-2 text-sm text-gray-600">
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">CV</span>
+                </div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                  Smart CV Builder
+                </h1>
+              </div>
+              <div className="hidden md:flex items-center space-x-2 text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded-full">
                 <span>Welcome back,</span>
                 <span className="font-medium text-gray-900">
                   {user?.user_metadata?.name || user?.email || 'User'}
@@ -271,31 +306,23 @@ const Dashboard = () => {
               <Button
                 variant="outline"
                 onClick={() => window.location.href = '/social'}
-                className="hidden md:flex"
+                className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200"
               >
-                <Users className="h-4 w-4 mr-2" />
+                <Users className="h-4 w-4" />
                 Social
               </Button>
               
               <NotificationsPanel />
               
-              <div className="flex items-center space-x-2">
-                <Button variant="ghost" size="sm">
-                  <User className="h-4 w-4 mr-2" />
-                  Profile
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Settings
-                </Button>
+              <div className="flex items-center space-x-3">
                 <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={handleLogout}
-                  className="text-red-600 hover:text-red-700"
+                  className="rounded-full w-10 h-10 p-0 border-red-200 hover:border-red-300 hover:bg-red-50 text-red-600 hover:text-red-700 transition-all duration-200 shadow-sm hover:shadow-md"
+                  title="Logout"
                 >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
+                  <LogOut className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -426,14 +453,125 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {applications.map((app) => (
-                              <ApplicationCard
-                  key={app.id}
-                  application={app}
-                  onDelete={handleDeleteApplication}
-                  onStatusUpdate={handleStatusUpdate}
-                />
+              <Card 
+                key={app.id} 
+                className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-l-4 border-l-blue-500 hover:border-l-blue-600"
+                onClick={() => handleApplicationClick(app)}
+              >
+                <CardContent className="p-6">
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Building className="h-5 w-5 text-blue-600" />
+                        <h3 className="font-bold text-lg text-gray-900 group-hover:text-blue-600 transition-colors">
+                          {app.company || 'Company'}
+                        </h3>
+                      </div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Briefcase className="h-4 w-4 text-gray-500" />
+                        <p className="text-gray-700 font-medium">
+                          {app.position || 'Position'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Status Dropdown */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Badge 
+                          className={`cursor-pointer hover:opacity-80 transition-opacity ${
+                                                    app.status === 'pending' ? 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200' :
+                        app.status === 'applied' ? 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200' :
+                        app.status === 'interviewing' ? 'bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200' :
+                        app.status === 'accepted' ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200' :
+                        app.status === 'copied' ? 'bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200' :
+                        'bg-red-100 text-red-800 border-red-200 hover:bg-red-200'
+                          }`}
+                          onClick={handleStatusBadgeClick}
+                        >
+                          {app.status === 'pending' && <Clock className="h-3 w-3 mr-1" />}
+                          {app.status === 'applied' && <FileText className="h-3 w-3 mr-1" />}
+                          {app.status === 'interviewing' && <TrendingUp className="h-3 w-3 mr-1" />}
+                          {app.status === 'accepted' && <CheckCircle className="h-3 w-3 mr-1" />}
+                          {app.status === 'copied' && <Copy className="h-3 w-3 mr-1" />}
+                          {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                        </Badge>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem 
+                          onClick={() => handleStatusChange(app.id, 'pending')}
+                          className="flex items-center gap-2"
+                        >
+                          <Clock className="h-4 w-4 text-yellow-600" />
+                          <span>Pending</span>
+                          {app.status === 'pending' && <CheckCircle className="h-4 w-4 ml-auto text-green-600" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleStatusChange(app.id, 'applied')}
+                          className="flex items-center gap-2"
+                        >
+                          <FileText className="h-4 w-4 text-blue-600" />
+                          <span>Applied</span>
+                          {app.status === 'applied' && <CheckCircle className="h-4 w-4 ml-auto text-green-600" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleStatusChange(app.id, 'interviewing')}
+                          className="flex items-center gap-2"
+                        >
+                          <TrendingUp className="h-4 w-4 text-purple-600" />
+                          <span>Interviewing</span>
+                          {app.status === 'interviewing' && <CheckCircle className="h-4 w-4 ml-auto text-green-600" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleStatusChange(app.id, 'accepted')}
+                          className="flex items-center gap-2"
+                        >
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span>Accepted</span>
+                          {app.status === 'accepted' && <CheckCircle className="h-4 w-4 ml-auto text-green-600" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleStatusChange(app.id, 'rejected')}
+                          className="flex items-center gap-2"
+                        >
+                          <X className="h-4 w-4 text-red-600" />
+                          <span>Rejected</span>
+                          {app.status === 'rejected' && <CheckCircle className="h-4 w-4 ml-auto text-green-600" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleStatusChange(app.id, 'copied')}
+                          className="flex items-center gap-2"
+                        >
+                          <Copy className="h-4 w-4 text-orange-600" />
+                          <span>Copied</span>
+                          {app.status === 'copied' && <CheckCircle className="h-4 w-4 ml-auto text-green-600" />}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {/* Content Preview */}
+                  {app.job_description && (
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                      {app.job_description.substring(0, 120)}...
+                    </p>
+                  )}
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between text-sm text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      <span>Applied {new Date(app.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div className="text-blue-600 font-medium group-hover:text-blue-700">
+                      View Details →
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
@@ -507,6 +645,153 @@ const Dashboard = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Application Details Modal */}
+      <Dialog open={showApplicationModal} onOpenChange={setShowApplicationModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Application Details</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowApplicationModal(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedApplication && (
+            <div className="space-y-6">
+              {/* Basic Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Company</label>
+                  <p className="text-xl font-semibold text-gray-900">{selectedApplication.company || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Position</label>
+                  <p className="text-xl font-semibold text-gray-900">{selectedApplication.position || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Status</label>
+                  <Badge 
+                    className={`${
+                      selectedApplication.status === 'pending' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                      selectedApplication.status === 'applied' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                      selectedApplication.status === 'interviewing' ? 'bg-purple-100 text-purple-800 border-purple-200' :
+                      selectedApplication.status === 'accepted' ? 'bg-green-100 text-green-800 border-green-200' :
+                      selectedApplication.status === 'copied' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                      'bg-red-100 text-red-800 border-red-200'
+                    }`}
+                  >
+                    {selectedApplication.status === 'pending' && <Clock className="h-3 w-3 mr-1" />}
+                    {selectedApplication.status === 'applied' && <FileText className="h-3 w-3 mr-1" />}
+                    {selectedApplication.status === 'interviewing' && <TrendingUp className="h-3 w-3 mr-1" />}
+                    {selectedApplication.status === 'accepted' && <CheckCircle className="h-3 w-3 mr-1" />}
+                    {selectedApplication.status === 'copied' && <Copy className="h-3 w-3 mr-1" />}
+                    {selectedApplication.status.charAt(0).toUpperCase() + selectedApplication.status.slice(1)}
+                  </Badge>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Application Date</label>
+                  <p className="text-sm text-gray-700">{new Date(selectedApplication.created_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+
+              {/* Job Description */}
+              {selectedApplication.job_description && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Job Description</label>
+                  <div className="mt-2 p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm whitespace-pre-wrap">{selectedApplication.job_description}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* CV Content */}
+              {selectedApplication.cv_content && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">CV Content</label>
+                  <div className="mt-2 p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm whitespace-pre-wrap">{selectedApplication.cv_content}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Interview Details */}
+              {(selectedApplication.interview_date || selectedApplication.interview_type || selectedApplication.interview_status) && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Interview Details</label>
+                  <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {selectedApplication.interview_date && (
+                      <div>
+                        <label className="text-xs text-gray-500">Interview Date</label>
+                        <p className="text-sm">{new Date(selectedApplication.interview_date).toLocaleDateString()}</p>
+                      </div>
+                    )}
+                    {selectedApplication.interview_type && (
+                      <div>
+                        <label className="text-xs text-gray-500">Interview Type</label>
+                        <p className="text-sm">{selectedApplication.interview_type}</p>
+                      </div>
+                    )}
+                    {selectedApplication.interview_status && (
+                      <div>
+                        <label className="text-xs text-gray-500">Interview Status</label>
+                        <p className="text-sm">{selectedApplication.interview_status}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Interview Notes */}
+              {selectedApplication.interview_notes && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Interview Notes</label>
+                  <div className="mt-2 p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm whitespace-pre-wrap">{selectedApplication.interview_notes}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4 border-t">
+                <Button
+                  onClick={() => {
+                    setShowApplicationModal(false);
+                    navigate(`/editor?id=${selectedApplication.id}`);
+                  }}
+                  className="flex-1"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Edit Application
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowApplicationModal(false);
+                    handleDeleteApplication(selectedApplication.id);
+                  }}
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  Delete
+                </Button>
+              </div>
+
+              {/* Timestamps */}
+              <div className="text-xs text-gray-500 border-t pt-4">
+                <p>Created: {new Date(selectedApplication.created_at).toLocaleString()}</p>
+                {selectedApplication.updated_at !== selectedApplication.created_at && (
+                  <p>Last Updated: {new Date(selectedApplication.updated_at).toLocaleString()}</p>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

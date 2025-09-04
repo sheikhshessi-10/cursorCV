@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS applications (
     title VARCHAR(200) NOT NULL,
     company VARCHAR(200),
     position VARCHAR(200),
-    status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'applied', 'interviewing', 'accepted', 'rejected')),
+    status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'applied', 'interviewing', 'accepted', 'rejected', 'copied')),
     job_description TEXT,
     cv_content TEXT,
     cv_data JSONB,
@@ -481,6 +481,11 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Create missing user profiles for existing users
 SELECT create_missing_user_profiles();
+
+-- Update applications table constraint to include 'copied' status
+ALTER TABLE applications DROP CONSTRAINT IF EXISTS applications_status_check;
+ALTER TABLE applications ADD CONSTRAINT applications_status_check 
+    CHECK (status IN ('pending', 'applied', 'interviewing', 'accepted', 'rejected', 'copied'));
 
 -- Success message
 SELECT '🎉 Database setup completed successfully! Your multi-user social platform is ready!' as message; 

@@ -27,9 +27,10 @@ interface ApplicationCardProps {
   };
   onDelete: (id: string) => void;
   onStatusUpdate: (id: string, status: string) => void;
+  isViewOnly?: boolean;
 }
 
-export const ApplicationCard = ({ application, onDelete, onStatusUpdate }: ApplicationCardProps) => {
+export const ApplicationCard = ({ application, onDelete, onStatusUpdate, isViewOnly = false }: ApplicationCardProps) => {
   const navigate = useNavigate();
 
   const getStatusColor = (status: string) => {
@@ -119,15 +120,36 @@ export const ApplicationCard = ({ application, onDelete, onStatusUpdate }: Appli
             </div>
           </div>
           
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate(`/editor?id=${application.id}`)}
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-            {application.job_description && (
+          {!isViewOnly && (
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(`/editor?id=${application.id}`)}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+              {application.job_description && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.open(application.job_description, '_blank')}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onDelete(application.id)}
+                className="text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          {isViewOnly && application.job_description && (
+            <div className="flex items-center space-x-2">
               <Button
                 variant="ghost"
                 size="sm"
@@ -135,57 +157,51 @@ export const ApplicationCard = ({ application, onDelete, onStatusUpdate }: Appli
               >
                 <ExternalLink className="h-4 w-4" />
               </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onDelete(application.id)}
-              className="text-red-600 hover:text-red-700"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center justify-between">
-          <Button
-            onClick={handleStatusAdvance}
-            disabled={!canAdvanceStatus(application.status)}
-            className={`${getStatusButtonVariant(application.status)} w-full mr-2`}
-          >
-            {getNextStatusLabel(application.status)}
-          </Button>
-          
-          <div className="flex space-x-1">
+        {!isViewOnly && (
+          <div className="flex items-center justify-between">
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onStatusUpdate(application.id, 'applied')}
-              className={application.status === 'applied' ? 'bg-yellow-100 border-yellow-300' : ''}
+              onClick={handleStatusAdvance}
+              disabled={!canAdvanceStatus(application.status)}
+              className={`${getStatusButtonVariant(application.status)} w-full mr-2`}
             >
-              <Send className="h-3 w-3 mr-1" />
-              Applied
+              {getNextStatusLabel(application.status)}
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onStatusUpdate(application.id, 'interview')}
-              className={application.status === 'interview' ? 'bg-blue-100 border-blue-300' : ''}
-            >
-              <Clock className="h-3 w-3 mr-1" />
-              Interview
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onStatusUpdate(application.id, 'accepted')}
-              className={application.status === 'accepted' ? 'bg-green-100 border-green-300' : ''}
-            >
-              <CheckCircle className="h-3 w-3 mr-1" />
-              Accepted
-            </Button>
+            
+            <div className="flex space-x-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onStatusUpdate(application.id, 'applied')}
+                className={application.status === 'applied' ? 'bg-yellow-100 border-yellow-300' : ''}
+              >
+                <Send className="h-3 w-3 mr-1" />
+                Applied
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onStatusUpdate(application.id, 'interview')}
+                className={application.status === 'interview' ? 'bg-blue-100 border-blue-300' : ''}
+              >
+                <Clock className="h-3 w-3 mr-1" />
+                Interview
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onStatusUpdate(application.id, 'accepted')}
+                className={application.status === 'accepted' ? 'bg-green-100 border-green-300' : ''}
+              >
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Accepted
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

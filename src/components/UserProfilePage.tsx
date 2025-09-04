@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, MapPin, GraduationCap, BookOpen, Calendar, CheckCircle, XCircle, Clock, User, UserPlus, UserCheck, UserX } from 'lucide-react';
+import { ArrowLeft, MapPin, GraduationCap, BookOpen, Calendar, CheckCircle, XCircle, Clock, User, UserPlus, UserCheck, UserX, X, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/lib/supabase';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface UserProfile {
   id: string;
@@ -49,6 +51,9 @@ export function UserProfilePage() {
   const [friendConnection, setFriendConnection] = useState<FriendConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [friendActionLoading, setFriendActionLoading] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [showApplicationModal, setShowApplicationModal] = useState(false);
+  const [addingApplication, setAddingApplication] = useState<string | null>(null);
 
   useEffect(() => {
     if (userId) {
@@ -237,6 +242,67 @@ export function UserProfilePage() {
       console.error('Error removing friend:', error);
     } finally {
       setFriendActionLoading(false);
+    }
+  };
+
+  const handleApplicationClick = (application: Application) => {
+    setSelectedApplication(application);
+    setShowApplicationModal(true);
+  };
+
+  const handleQuickAdd = async (application: Application, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent opening the modal when clicking the button
+    
+    if (!currentUser) {
+      toast.error('You must be logged in to add applications');
+      return;
+    }
+
+    setAddingApplication(application.id);
+    
+    try {
+      // Create a new application for the current user based on the selected application
+      const newApplication = {
+        id: crypto.randomUUID(),
+        title: application.title || `${application.position || 'Position'} at ${application.company || 'Company'}` || 'New Application',
+        company: application.company || '',
+        position: application.position || '',
+        status: 'copied', // Mark as copied when quick adding from another user
+        job_description: application.job_description || '',
+        cv_content: application.cv_content || '',
+        cv_data: application.cv_data || {},
+        is_public: true,
+        allow_comments: true,
+        interview_date: null, // Don't copy interview details
+        interview_type: null,
+        interview_status: null,
+        interview_notes: null,
+        application_date: new Date().toISOString().split('T')[0],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        user_id: currentUser.id
+      };
+
+      console.log('Creating application:', newApplication);
+
+      const { data, error } = await supabase
+        .from('applications')
+        .insert([newApplication])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding application:', error);
+        toast.error(`Failed to add application: ${error.message}`);
+      } else {
+        console.log('Application created successfully:', data);
+        toast.success('Application added to your dashboard!');
+      }
+    } catch (error) {
+      console.error('Error adding application:', error);
+      toast.error('Failed to add application');
+    } finally {
+      setAddingApplication(null);
     }
   };
 
@@ -468,7 +534,11 @@ export function UserProfilePage() {
           ) : (
             <div className="grid gap-4">
               {applications.map((application) => (
-                <Card key={application.id} className="hover:shadow-md transition-shadow">
+                <Card 
+                  key={application.id} 
+                  className="hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleApplicationClick(application)}
+                >
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
@@ -496,6 +566,22 @@ export function UserProfilePage() {
                           )}
                         </div>
                       </div>
+                      
+                      {/* Quick Add Button */}
+                      {currentUser && currentUser.id !== userId && (
+                        <div className="ml-4">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => handleQuickAdd(application, e)}
+                            disabled={addingApplication === application.id}
+                            className="flex items-center gap-2 text-green-600 border-green-200 hover:bg-green-50"
+                          >
+                            <Plus className="h-4 w-4" />
+                            {addingApplication === application.id ? 'Adding...' : 'Quick Add'}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -504,6 +590,116 @@ export function UserProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Application Details Modal */}
+      <Dialog open={showApplicationModal} onOpenChange={setShowApplicationModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Application Details</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowApplicationModal(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedApplication && (
+            <div className="space-y-6">
+              {/* Basic Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Position</label>
+                  <p className="text-lg font-semibold">{selectedApplication.position || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Company</label>
+                  <p className="text-lg">{selectedApplication.company || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Status</label>
+                  <div className="flex items-center gap-2">
+                    {getStatusIcon(selectedApplication.status)}
+                    {getStatusBadge(selectedApplication.status)}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Application Date</label>
+                  <p className="text-sm">{new Date(selectedApplication.created_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+
+              {/* Job Description */}
+              {selectedApplication.job_description && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Job Description</label>
+                  <div className="mt-2 p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm whitespace-pre-wrap">{selectedApplication.job_description}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* CV Content */}
+              {selectedApplication.cv_content && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">CV Content</label>
+                  <div className="mt-2 p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm whitespace-pre-wrap">{selectedApplication.cv_content}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Interview Details */}
+              {(selectedApplication.interview_date || selectedApplication.interview_type || selectedApplication.interview_status) && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Interview Details</label>
+                  <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {selectedApplication.interview_date && (
+                      <div>
+                        <label className="text-xs text-gray-500">Interview Date</label>
+                        <p className="text-sm">{new Date(selectedApplication.interview_date).toLocaleDateString()}</p>
+                      </div>
+                    )}
+                    {selectedApplication.interview_type && (
+                      <div>
+                        <label className="text-xs text-gray-500">Interview Type</label>
+                        <p className="text-sm">{selectedApplication.interview_type}</p>
+                      </div>
+                    )}
+                    {selectedApplication.interview_status && (
+                      <div>
+                        <label className="text-xs text-gray-500">Interview Status</label>
+                        <p className="text-sm">{selectedApplication.interview_status}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Interview Notes */}
+              {selectedApplication.interview_notes && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Interview Notes</label>
+                  <div className="mt-2 p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm whitespace-pre-wrap">{selectedApplication.interview_notes}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Application Date */}
+              <div className="text-xs text-gray-500 border-t pt-4">
+                <p>Created: {new Date(selectedApplication.created_at).toLocaleString()}</p>
+                {selectedApplication.updated_at !== selectedApplication.created_at && (
+                  <p>Last Updated: {new Date(selectedApplication.updated_at).toLocaleString()}</p>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

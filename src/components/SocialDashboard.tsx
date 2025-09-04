@@ -189,11 +189,11 @@ export function SocialDashboard() {
         </div>
         <Button 
           variant="outline" 
-          onClick={() => window.history.back()}
+          onClick={() => navigate('/dashboard')}
           className="flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back
+          Back to Dashboard
         </Button>
       </div>
 
