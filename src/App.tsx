@@ -12,6 +12,7 @@ import { SocialDashboard } from "./components/SocialDashboard";
 import NotFound from "./pages/NotFound";
 import { UserProfilePage } from './components/UserProfilePage';
 import UserDashboardView from './components/UserDashboardView';
+import Explore from './pages/Explore';
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/editor" element={<Editor />} />
             <Route path="/templates" element={<Templates />} />
             <Route path="/social" element={<SocialDashboard />} />
+            <Route path="/explore" element={<Explore />} />
             <Route path="/user/:userId" element={<UserProfilePage />} />
             <Route path="/user/:userId/dashboard" element={<UserDashboardView />} />
             <Route path="*" element={<NotFound />} />

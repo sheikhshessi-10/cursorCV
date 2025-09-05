@@ -19,6 +19,7 @@ interface CreateApplicationDialogProps {
     position: string;
     company: string;
     jobDescription: string;
+    jobLink?: string;
     cvContent?: string;
     cvData?: any;
   }) => void;
@@ -30,6 +31,7 @@ export const CreateApplicationDialog = ({ onClose, onSubmit }: CreateApplication
     position: '',
     company: '',
     jobDescription: '',
+    jobLink: '',
     cvContent: '',
     cvData: {}
   });
@@ -43,6 +45,7 @@ export const CreateApplicationDialog = ({ onClose, onSubmit }: CreateApplication
         position: '',
         company: '',
         jobDescription: '',
+        jobLink: '',
         cvContent: '',
         cvData: {}
       });
@@ -96,6 +99,16 @@ export const CreateApplicationDialog = ({ onClose, onSubmit }: CreateApplication
               onChange={(e) => setFormData({...formData, jobDescription: e.target.value})}
               placeholder="Paste the job description here..."
               rows={4}
+            />
+          </div>
+          <div>
+            <Label htmlFor="jobLink">Job Link (Optional)</Label>
+            <Input
+              id="jobLink"
+              type="url"
+              value={formData.jobLink}
+              onChange={(e) => setFormData({...formData, jobLink: e.target.value})}
+              placeholder="https://company.com/careers/job-posting"
             />
           </div>
           <div>

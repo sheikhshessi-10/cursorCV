@@ -23,7 +23,8 @@ import {
   X,
   Calendar,
   MapPin,
-  Building
+  Building,
+  ExternalLink
 } from 'lucide-react';
 import { ApplicationCard } from '@/components/ApplicationCard';
 import { CreateApplicationDialog } from '@/components/CreateApplicationDialog';
@@ -53,6 +54,7 @@ interface Application {
   interview_status?: string;
   interview_notes?: string;
   application_date?: string;
+  job_link?: string;
 }
 
 const Dashboard = () => {
@@ -115,10 +117,11 @@ const Dashboard = () => {
       const newApplication = {
         id: crypto.randomUUID(),
         title: applicationData.title || 'Untitled Application',
-                  company: applicationData.company || '',
-          position: applicationData.position || '',
-          status: 'pending',
-          job_description: applicationData.jobDescription || '',
+        company: applicationData.company || '',
+        position: applicationData.position || '',
+        status: 'pending',
+        job_description: applicationData.jobDescription || '',
+        job_link: applicationData.jobLink || '',
         cv_content: applicationData.cvContent || '',
         cv_data: applicationData.cvData || {},
         is_public: false, // Default to private, user can make public later
@@ -310,6 +313,14 @@ const Dashboard = () => {
               >
                 <Users className="h-4 w-4" />
                 Social
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => window.location.href = '/explore'}
+                className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full border-purple-200 hover:border-purple-300 hover:bg-purple-50 transition-all duration-200"
+              >
+                <Search className="h-4 w-4" />
+                Explore
               </Button>
               
               <NotificationsPanel />
@@ -753,6 +764,23 @@ const Dashboard = () => {
                   <label className="text-sm font-medium text-gray-500">Interview Notes</label>
                   <div className="mt-2 p-4 bg-gray-50 rounded-lg">
                     <p className="text-sm whitespace-pre-wrap">{selectedApplication.interview_notes}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Job Link */}
+              {selectedApplication.job_link && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Job Link</label>
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => window.open(selectedApplication.job_link, '_blank')}
+                      className="w-full justify-start text-left"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      <span className="truncate">{selectedApplication.job_link}</span>
+                    </Button>
                   </div>
                 </div>
               )}

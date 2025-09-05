@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS applications (
     position VARCHAR(200),
     status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'applied', 'interviewing', 'accepted', 'rejected', 'copied')),
     job_description TEXT,
+    job_link TEXT,
     cv_content TEXT,
     cv_data JSONB,
     is_public BOOLEAN DEFAULT true,
